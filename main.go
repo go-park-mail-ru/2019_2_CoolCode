@@ -24,7 +24,7 @@ type ClientError interface {
 }
 
 type User struct {
-	ID       int
+	ID       uint64
 	Username string
 	Email    string
 	Name     string
@@ -73,12 +73,12 @@ type Users struct {
 }
 
 type Handlers struct {
-	Users map[string]User
+	Users map[uint64]User
 }
 
 func (handlers *Handlers) readUsers(users Users) {
 	for _, user := range users.Users {
-		handlers.Users[user.Email] = user
+		handlers.Users[user.ID] = user
 	}
 }
 
@@ -93,7 +93,7 @@ func (handlers *Handlers) saveUsers() {
 	encoder.Encode(usersSlice)
 }
 
-func signUp(body io.ReadCloser, users map[string]User) error {
+func signUp(body io.ReadCloser, users map[uint64]User) error {
 	var newUser User
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
@@ -101,12 +101,12 @@ func signUp(body io.ReadCloser, users map[string]User) error {
 		log.Println("Json decoding error")
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	newUser.ID = len(users) + 1
-	if _, contains := users[newUser.Email]; contains {
+	newUser.ID = uint64(len(users))
+	if _, contains := users[newUser.ID]; contains {
 		log.Println("User contains", newUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	}
-	users[newUser.Email] = newUser
+	users[newUser.ID] = newUser
 	return nil
 }
 
@@ -117,7 +117,7 @@ func main() {
 	decoder := json.NewDecoder(reader)
 	_ = decoder.Decode(&users)
 	handler := Handlers{
-		Users: make(map[string]User, 0),
+		Users: make(map[uint64]User, 0),
 	}
 	handler.readUsers(users)
 	http.HandleFunc("/sign_up", func(w http.ResponseWriter, r *http.Request) {
@@ -144,11 +144,10 @@ func main() {
 				w.Write(body)
 				return
 			}
-			ID, _ := json.Marshal(struct {
-				studentId int
-			}{
-				len(handler.Users),
+			ID, _ := json.Marshal(&map[string]int{
+				"studentID": len(handler.Users),
 			})
+			log.Println("Response body: ",string(ID))
 			w.Write(ID)
 			handler.saveUsers()
 
@@ -216,7 +215,7 @@ func main() {
 
 }
 
-func editProfile(request *http.Request, users map[string]User) error {
+func editProfile(request *http.Request, users map[uint64]User) error {
 	var editUser User
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&editUser)
@@ -224,16 +223,16 @@ func editProfile(request *http.Request, users map[string]User) error {
 		log.Println("Json decoding error")
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	if _, contains := users[editUser.Email]; !contains {
+	if _, contains := users[editUser.ID]; !contains {
 		log.Println("User not contains", editUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user not contains.")
 	}
-	users[editUser.Email] = editUser
+	users[editUser.ID] = editUser
 	return nil
 
 }
 
-func login(body io.ReadCloser, users map[string]User) error {
+func login(body io.ReadCloser, users map[uint64]User) error {
 	var loginUser User
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&loginUser)
@@ -241,7 +240,7 @@ func login(body io.ReadCloser, users map[string]User) error {
 		log.Println("Json decoding error")
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	if val, ok := users[loginUser.Email]; ok {
+	if val, ok := users[loginUser.ID]; ok {
 		if val.Password == loginUser.Password {
 			return nil
 		} else {
