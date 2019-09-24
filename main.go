@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"log"
 	"net/http"
@@ -22,6 +23,8 @@ type ClientError interface {
 	ResponseBody() ([]byte, error)
 	ResponseHeaders() (int, map[string]string)
 }
+
+type Sessions map[string]User
 
 type User struct {
 	ID       uint64
@@ -73,19 +76,20 @@ type Users struct {
 }
 
 type Handlers struct {
-	Users map[uint64]User
+	Users map[uint64]*User
+	Sessions map[string]*User
 }
 
 func (handlers *Handlers) readUsers(users Users) {
 	for _, user := range users.Users {
-		handlers.Users[user.ID] = user
+		handlers.Users[user.ID] = &user
 	}
 }
 
 func (handlers *Handlers) saveUsers() {
 	var usersSlice Users
-	for _, v := range handlers.Users {
-		usersSlice.Users = append(usersSlice.Users, v)
+	for _, user := range handlers.Users {
+		usersSlice.Users = append(usersSlice.Users, *user)
 	}
 	os.Remove("users.txt")
 	file, _ := os.Create("users.txt")
@@ -93,7 +97,7 @@ func (handlers *Handlers) saveUsers() {
 	encoder.Encode(usersSlice)
 }
 
-func signUp(body io.ReadCloser, users map[uint64]User) error {
+func (handlers *Handlers)signUp(body io.ReadCloser) error {
 	var newUser User
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
@@ -101,12 +105,12 @@ func signUp(body io.ReadCloser, users map[uint64]User) error {
 		log.Println("Json decoding error")
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	newUser.ID = uint64(len(users))
-	if _, contains := users[newUser.ID]; contains {
+	newUser.ID = uint64(len(handlers.Users))
+	if _, contains := handlers.Users[newUser.ID]; contains {
 		log.Println("User contains", newUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	}
-	users[newUser.ID] = newUser
+	handlers.Users[newUser.ID] = &newUser
 	return nil
 }
 
@@ -117,12 +121,13 @@ func main() {
 	decoder := json.NewDecoder(reader)
 	_ = decoder.Decode(&users)
 	handler := Handlers{
-		Users: make(map[uint64]User, 0),
+		Users: make(map[uint64]*User, 0),
+		Sessions: make(map[string]*User, 0),
 	}
 	handler.readUsers(users)
 	http.HandleFunc("/sign_up", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.Header.Get("content-type") == "application/json" {
-			err := signUp(r.Body, handler.Users)
+			err := handler.signUp(r.Body)
 			if err != nil {
 				clientError, ok := err.(ClientError)
 				if !ok {
@@ -144,11 +149,6 @@ func main() {
 				w.Write(body)
 				return
 			}
-			ID, _ := json.Marshal(&map[string]int{
-				"studentID": len(handler.Users),
-			})
-			log.Println("Response body: ",string(ID))
-			w.Write(ID)
 			handler.saveUsers()
 
 		} else {
@@ -160,7 +160,7 @@ func main() {
 		if r.Method != http.MethodPost || r.Header.Get("content-type") != "application/json" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-		err := login(r.Body, handler.Users)
+		user,err := handler.login(r.Body)
 		if err != nil {
 			clientError, ok := err.(ClientError)
 			if ok {
@@ -179,20 +179,27 @@ func main() {
 			}
 			return
 		}
+		token:= uuid.New()
 		expiration := time.Now().Add(365 * 24 * time.Hour)
-		cookie := http.Cookie{Name: "session_id", Value: "abcd", Expires: expiration}
+		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
+		handler.Sessions[cookie.Value]=user
 		http.SetCookie(w, &cookie)
 	})
 
 	http.HandleFunc("/edit", func(w http.ResponseWriter, r *http.Request) {
-		_, err := r.Cookie("session_id")
-		loggedIn := (err != http.ErrNoCookie)
+		sessionID, err := r.Cookie("session_id")
+		if err!=nil{
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		user,err := handler.parseCookie(sessionID)
+		loggedIn:= err==nil
 
 		if !loggedIn {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		} else {
-			editProfile(r, handler.Users)
+			handler.editProfile(r, user)
 			handler.saveUsers()
 			w.WriteHeader(200)
 		}
@@ -214,42 +221,46 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 
 }
+func (handlers Handlers)parseCookie(cookie *http.Cookie) (*User, error) {
+	if user,ok:=handlers.Sessions[cookie.Value]; ok{
+		return handlers.Sessions[cookie.Value],nil
+	}else {
+		return user,NewClientError(nil,http.StatusUnauthorized,"Bad request: not Cookie:(")
+	}
+}
 
-func editProfile(request *http.Request, users map[uint64]User) error {
-	var editUser User
+func (handlers *Handlers)editProfile(request *http.Request,user *User ) error {
+	var editUser *User
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&editUser)
 	if err != nil {
 		log.Println("Json decoding error")
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	if _, contains := users[editUser.ID]; !contains {
-		log.Println("User not contains", editUser)
-		return NewClientError(nil, http.StatusBadRequest, "Bad request : user not contains.")
-	}
-	users[editUser.ID] = editUser
+
+	*user=*editUser
 	return nil
 
 }
 
-func login(body io.ReadCloser, users map[uint64]User) error {
+func (handlers *Handlers)login(body io.ReadCloser) (*User,error) {
 	var loginUser User
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&loginUser)
 	if err != nil {
 		log.Println("Json decoding error")
-		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		return &loginUser,NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	if val, ok := users[loginUser.ID]; ok {
+	if val, ok := handlers.Users[loginUser.ID]; ok {
 		if val.Password == loginUser.Password {
-			return nil
+			return val,nil
 		} else {
 			log.Println("Wrong password",val)
-			return NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
+			return &loginUser,NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
 		}
 	}
 
 	log.Println("Unregistered user", loginUser)
-	return NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
+	return &loginUser,NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
 
 }
