@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strconv"
 	"time"
 )
 
@@ -31,10 +33,15 @@ type User struct {
 	Username string
 	Email    string
 	Name     string
-	Password string
+	Password string `json:"-"`
 	Status   string
 	Photo    []byte
 }
+
+//func (user *User) updateFields(user2 *User) {
+//	for
+//
+//}
 
 type HTTPError struct {
 	Cause  error
@@ -76,13 +83,13 @@ type Users struct {
 }
 
 type Handlers struct {
-	Users map[uint64]*User
+	Users map[string]*User
 	Sessions map[string]*User
 }
 
 func (handlers *Handlers) readUsers(users Users) {
 	for _, user := range users.Users {
-		handlers.Users[user.ID] = &user
+		handlers.Users[user.Email] = &user
 	}
 }
 
@@ -106,11 +113,11 @@ func (handlers *Handlers)signUp(body io.ReadCloser) error {
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
 	newUser.ID = uint64(len(handlers.Users))
-	if _, contains := handlers.Users[newUser.ID]; contains {
+	if _, contains := handlers.Users[newUser.Email]; contains {
 		log.Println("User contains", newUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	}
-	handlers.Users[newUser.ID] = &newUser
+	handlers.Users[newUser.Email] = &newUser
 	return nil
 }
 
@@ -121,7 +128,7 @@ func main() {
 	decoder := json.NewDecoder(reader)
 	_ = decoder.Decode(&users)
 	handler := Handlers{
-		Users: make(map[uint64]*User, 0),
+		Users: make(map[string]*User, 0),
 		Sessions: make(map[string]*User, 0),
 	}
 	handler.readUsers(users)
@@ -183,13 +190,27 @@ func main() {
 		expiration := time.Now().Add(365 * 24 * time.Hour)
 		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
 		handler.Sessions[cookie.Value]=user
+		body,err:=json.Marshal(user)
+		if err!=nil{
+			log.Printf("An error accured: %v", err)
+			w.WriteHeader(500)
+			return
+		}
 		http.SetCookie(w, &cookie)
+		w.Write(body)
+
 	})
 
-	http.HandleFunc("/edit", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
 		sessionID, err := r.Cookie("session_id")
 		if err!=nil{
 			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		requestedID,err:=strconv.ParseInt(path.Base(r.URL.String()),10,64)
+		if err!=nil{
+			log.Printf("An error accured: %v", err)
+			w.WriteHeader(500)
 			return
 		}
 		user,err := handler.parseCookie(sessionID)
@@ -199,6 +220,11 @@ func main() {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		} else {
+
+			if uint64(requestedID)!=user.ID{
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			handler.editProfile(r, user)
 			handler.saveUsers()
 			w.WriteHeader(200)
@@ -238,6 +264,8 @@ func (handlers *Handlers)editProfile(request *http.Request,user *User ) error {
 		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
 
+	user.updateFields(editUser)
+
 	*user=*editUser
 	return nil
 
@@ -251,7 +279,7 @@ func (handlers *Handlers)login(body io.ReadCloser) (*User,error) {
 		log.Println("Json decoding error")
 		return &loginUser,NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 	}
-	if val, ok := handlers.Users[loginUser.ID]; ok {
+	if val, ok := handlers.Users[loginUser.Email]; ok {
 		if val.Password == loginUser.Password {
 			return val,nil
 		} else {
@@ -264,3 +292,5 @@ func (handlers *Handlers)login(body io.ReadCloser) (*User,error) {
 	return &loginUser,NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
 
 }
+
+
