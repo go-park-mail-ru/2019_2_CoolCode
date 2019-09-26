@@ -194,7 +194,7 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
+	r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
 	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Write([]byte("Mem"))
 
