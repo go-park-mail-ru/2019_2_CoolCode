@@ -187,14 +187,15 @@ func main() {
 	handler.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{os.Getenv("*")}),
+		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 		handlers.AllowCredentials(),
 	)
 
+
 	r := mux.NewRouter()
-	r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
+	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
 	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Write([]byte("Mem"))
 
