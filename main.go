@@ -1,4 +1,4 @@
-package main
+package _019_2_CoolCode
 
 import (
 	"encoding/json"
@@ -124,6 +124,10 @@ func main() {
 
 	r := mux.NewRouter()
 	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
+	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		writer.Write([]byte("Mem"))
+
+	}).Methods("GET")
 	r.HandleFunc("/users",handler.signUp).Methods("POST")
 	r.HandleFunc("/login",handler.login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}",handler.editProfile).Methods("PUT")

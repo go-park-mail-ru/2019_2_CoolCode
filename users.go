@@ -1,4 +1,4 @@
-package main
+package _019_2_CoolCode
 
 import (
 	"encoding/json"
