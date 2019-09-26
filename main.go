@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
 	"log"
 	"net/http"
 	"os"
@@ -185,6 +186,13 @@ func main() {
 	}
 	handler.Users.readUsers(users)
 
+	corsMiddleware := handlers.CORS(
+		handlers.AllowedOrigins([]string{os.Getenv("*")}),
+		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
+		handlers.AllowedHeaders([]string{"Content-Type"}),
+		handlers.AllowCredentials(),
+	)
+
 	r := mux.NewRouter()
 	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
 	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
@@ -199,7 +207,7 @@ func main() {
 	r.HandleFunc("/photos/{id:[0-9]+}",handler.getPhoto).Methods("GET")
 	//r.HandleFunc("/users/{id:[0-9]+}").Methods("GET")
 	log.Println("Server started")
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(":8080", corsMiddleware(r))
 
 
 }
