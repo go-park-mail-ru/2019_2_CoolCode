@@ -1,11 +1,15 @@
-package _019_2_CoolCode
+package main
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -128,3 +132,43 @@ func (userStore UserStore)GetUsers() Users {
 	}
 	return usersSlice
 }
+
+func (userStore UserStore)SavePhoto(file multipart.File,id string) error {
+	defer file.Close()
+
+
+
+	tempFile, err := ioutil.TempFile("photos", "upload-*.png")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer tempFile.Close()
+
+
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = os.Rename(tempFile.Name(),"photos/"+id+".png")
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	tempFile.Write(fileBytes)
+	return nil
+}
+func (userStore *UserStore) GetPhoto(id int) (os.File,error) {
+	fileName:=strconv.Itoa(id)
+	file,err:=os.Open("photos/"+fileName+".png")
+	if err!=nil{
+		fmt.Println(err)
+		return *file,err
+	}
+	return *file,nil
+}
+
+
+
