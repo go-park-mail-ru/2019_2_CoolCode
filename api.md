@@ -84,7 +84,6 @@
  {
       "id":"int",
       "email":"string",
-      "password":"string",
       "username":"string",
       "name":"string",
       "status":"string"
@@ -94,7 +93,6 @@
   | Ключ          | Значение                                                                                                                                                                                                                                                                               |
     | ------------- | ----------------------------------------- |
     | `username`    | Логин  пользователя. |
-    | `password`    | Пароль пользователя |
     | `id`     | Id пользователя |
     | `email`     | Email пользователя |
     | `name`     | Реальное имя пользователя |
@@ -122,7 +120,6 @@
  {
       "id":"int",
       "email":"string",
-      "password":"string",
       "username":"string",
       "name":"string",
       "status":"string"

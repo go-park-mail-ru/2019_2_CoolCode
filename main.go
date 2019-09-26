@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"io"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
 	"time"
 )
@@ -26,22 +25,8 @@ type ClientError interface {
 	ResponseHeaders() (int, map[string]string)
 }
 
-type Sessions map[string]User
 
-type User struct {
-	ID       uint64
-	Username string
-	Email    string
-	Name     string
-	Password string `json:"-"`
-	Status   string
-	Photo    []byte
-}
 
-//func (user *User) updateFields(user2 *User) {
-//	for
-//
-//}
 
 type HTTPError struct {
 	Cause  error
@@ -78,47 +63,51 @@ func NewClientError(err error, status int, detail string) ClientError {
 	}
 }
 
-type Users struct {
-	Users []User `json:"users"`
-}
 
 type Handlers struct {
-	Users map[string]*User
-	Sessions map[string]*User
+	Users UserStore
+	Sessions map[string]uint
 }
 
-func (handlers *Handlers) readUsers(users Users) {
-	for _, user := range users.Users {
-		handlers.Users[user.Email] = &user
+func (handlers *Handlers) sendError(err error,w http.ResponseWriter) {
+	clientError, ok := err.(ClientError)
+	if !ok {
+		w.WriteHeader(500) // return 500 Internal Server Error.
+		return
 	}
-}
 
-func (handlers *Handlers) saveUsers() {
-	var usersSlice Users
-	for _, user := range handlers.Users {
-		usersSlice.Users = append(usersSlice.Users, *user)
+	body, err := clientError.ResponseBody() // Try to get response body of ClientError.
+	if err != nil {
+		log.Printf("An error accured: %v", err)
+		w.WriteHeader(500)
+		return
 	}
-	os.Remove("users.txt")
-	file, _ := os.Create("users.txt")
-	encoder := json.NewEncoder(file)
-	encoder.Encode(usersSlice)
+	status, headers := clientError.ResponseHeaders() // GetUserByEmail http status code and headers.
+	for k, v := range headers {
+		w.Header().Set(k, v)
+	}
+	w.WriteHeader(status)
+	w.Write(body)
 }
 
-func (handlers *Handlers)signUp(body io.ReadCloser) error {
+
+
+func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
+	log.Println("New request: ",r.Body)
 	var newUser User
+	body:=r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
 	if err != nil {
 		log.Println("Json decoding error")
-		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		err =  NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err,w)
 	}
-	newUser.ID = uint64(len(handlers.Users))
-	if _, contains := handlers.Users[newUser.Email]; contains {
-		log.Println("User contains", newUser)
-		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
+	err=handlers.Users.AddUser(&newUser)
+	if err!=nil{
+		handlers.sendError(err,w)
 	}
-	handlers.Users[newUser.Email] = &newUser
-	return nil
+
 }
 
 func main() {
@@ -128,169 +117,130 @@ func main() {
 	decoder := json.NewDecoder(reader)
 	_ = decoder.Decode(&users)
 	handler := Handlers{
-		Users: make(map[string]*User, 0),
-		Sessions: make(map[string]*User, 0),
+		Users:    NewUserStore(),
+		Sessions: make(map[string]uint, 0),
 	}
-	handler.readUsers(users)
-	http.HandleFunc("/sign_up", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.Header.Get("content-type") == "application/json" {
-			err := handler.signUp(r.Body)
-			if err != nil {
-				clientError, ok := err.(ClientError)
-				if !ok {
-					w.WriteHeader(500) // return 500 Internal Server Error.
-					return
-				}
+	handler.Users.readUsers(users)
 
-				body, err := clientError.ResponseBody() // Try to get response body of ClientError.
-				if err != nil {
-					log.Printf("An error accured: %v", err)
-					w.WriteHeader(500)
-					return
-				}
-				status, headers := clientError.ResponseHeaders() // Get http status code and headers.
-				for k, v := range headers {
-					w.Header().Set(k, v)
-				}
-				w.WriteHeader(status)
-				w.Write(body)
-				return
-			}
-			handler.saveUsers()
+	r := mux.NewRouter()
+	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
+	r.HandleFunc("/users",handler.signUp).Methods("POST")
+	r.HandleFunc("/login",handler.login).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}",handler.editProfile).Methods("PUT")
+	r.HandleFunc("/logout",handler.logout).Methods("POST")
+	//r.HandleFunc("/users/{id:[0-9]+}").Methods("GET")
 
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+	http.ListenAndServe(":8080", r)
+
+}
+func (handlers Handlers) parseCookie(cookie *http.Cookie) (User, error) {
+	id:=handlers.Sessions[cookie.Value]
+	user,err:=handlers.Users.GetUserByID(id)
+	if err==nil {
+		return user, nil
+	} else {
+		return user, NewClientError(nil, http.StatusUnauthorized, "Bad request: not Cookie:(")
+	}
+}
+
+func (handlers *Handlers) editProfile(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
+
+	if err != nil {
+		log.Printf("An error accured: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	user, err := handlers.parseCookie(sessionID)
+	loggedIn := err == nil
+
+	if !loggedIn {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	} else {
+		if uint(requestedID) != user.ID {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
-	})
 
-	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.Header.Get("content-type") != "application/json" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+		var editUser *User
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&editUser)
+		if editUser.ID!=user.ID{
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
-		user,err := handler.login(r.Body)
 		if err != nil {
-			clientError, ok := err.(ClientError)
-			if ok {
-				body, err := clientError.ResponseBody()
-				if err != nil {
-					log.Printf("An error accured: %v", err)
-					w.WriteHeader(500)
-					return
-				}
-				status, headers := clientError.ResponseHeaders()
-				for k, v := range headers {
-					w.Header().Set(k, v)
-				}
-				w.WriteHeader(status)
-				w.Write(body)
-			}
-			return
+			log.Println("Json decoding error")
+			err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+			handlers.sendError(err, w)
 		}
-		token:= uuid.New()
-		expiration := time.Now().Add(365 * 24 * time.Hour)
-		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
-		handler.Sessions[cookie.Value]=user
-		body,err:=json.Marshal(user)
-		if err!=nil{
-			log.Printf("An error accured: %v", err)
-			w.WriteHeader(500)
-			return
-		}
-		http.SetCookie(w, &cookie)
-		w.Write(body)
 
-	})
+		handlers.Users.ChangeUser(editUser)
 
-	http.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
-		sessionID, err := r.Cookie("session_id")
-		if err!=nil{
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		requestedID,err:=strconv.ParseInt(path.Base(r.URL.String()),10,64)
-		if err!=nil{
-			log.Printf("An error accured: %v", err)
-			w.WriteHeader(500)
-			return
-		}
-		user,err := handler.parseCookie(sessionID)
-		loggedIn:= err==nil
+	}
+}
 
-		if !loggedIn {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		} else {
+func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request)  {
+	var loginUser User
+	body:=r.Body
+	decoder := json.NewDecoder(body)
+	err := decoder.Decode(&loginUser)
+	if err != nil {
+		log.Println("Json decoding error")
+		 err=NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		 handlers.sendError(err,w)
+	}
 
-			if uint64(requestedID)!=user.ID{
-				w.WriteHeader(http.StatusUnauthorized)
+	user,err:=handlers.Users.GetUserByEmail(loginUser.Email)
+	if err==nil {
+		if user.Password == loginUser.Password {
+			//write cookie
+			token := uuid.New()
+			expiration := time.Now().Add(365 * 24 * time.Hour)
+			cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
+			handlers.Sessions[cookie.Value] = user.ID
+			body, err := json.Marshal(user)
+			if err != nil {
+				log.Printf("An error accured: %v", err)
+				w.WriteHeader(500)
 				return
 			}
-			handler.editProfile(r, user)
-			handler.saveUsers()
-			w.WriteHeader(200)
+			http.SetCookie(w, &cookie)
+			w.Header().Set("content-type","application/json")
+			w.Write(body)
+			return
+
+		} else {
+			log.Println("Wrong password", user)
+			err=NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
+			handlers.sendError(err,w)
 		}
+	}
 
-	})
+	log.Println("Unregistered user", loginUser)
+	err = NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
+	handlers.sendError(err,w)
 
-	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+}
+
+func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request)  {
 		session, err := r.Cookie("session_id")
 		if err == http.ErrNoCookie {
 			log.Println("Not authorized")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-
 		session.Expires = time.Now().AddDate(0, 0, -1)
 		http.SetCookie(w, session)
-	})
-
-	http.ListenAndServe(":8080", nil)
-
-}
-func (handlers Handlers)parseCookie(cookie *http.Cookie) (*User, error) {
-	if user,ok:=handlers.Sessions[cookie.Value]; ok{
-		return handlers.Sessions[cookie.Value],nil
-	}else {
-		return user,NewClientError(nil,http.StatusUnauthorized,"Bad request: not Cookie:(")
-	}
 }
 
-func (handlers *Handlers)editProfile(request *http.Request,user *User ) error {
-	var editUser *User
-	decoder := json.NewDecoder(request.Body)
-	err := decoder.Decode(&editUser)
-	if err != nil {
-		log.Println("Json decoding error")
-		return NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-	}
-
-	user.updateFields(editUser)
-
-	*user=*editUser
-	return nil
-
+func addCorsHeader(w http.ResponseWriter, r *http.Request) {
+	log.Println("Handled pre-flight request")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
-
-func (handlers *Handlers)login(body io.ReadCloser) (*User,error) {
-	var loginUser User
-	decoder := json.NewDecoder(body)
-	err := decoder.Decode(&loginUser)
-	if err != nil {
-		log.Println("Json decoding error")
-		return &loginUser,NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-	}
-	if val, ok := handlers.Users[loginUser.Email]; ok {
-		if val.Password == loginUser.Password {
-			return val,nil
-		} else {
-			log.Println("Wrong password",val)
-			return &loginUser,NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
-		}
-	}
-
-	log.Println("Unregistered user", loginUser)
-	return &loginUser,NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
-
-}
-
-
