@@ -18,7 +18,7 @@ type User struct {
 	Username string
 	Email    string
 	Name     string
-	Password string `json:"-"`
+	Password string
 	Status   string
 	Photo    []byte
 }

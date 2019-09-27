@@ -151,6 +151,41 @@ func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
+	_, err = handlers.parseCookie(sessionID)
+	loggedIn := err == nil
+
+	if !loggedIn {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	user,err:=handlers.Users.GetUserByID(uint(requestedID))
+	if err != nil {
+		log.Println("Get user error")
+		err=NewClientError(err, http.StatusBadRequest, "Bad request : invalid ID.")
+		handlers.sendError(err,w)
+	}
+
+	user.Password=""
+	body, err := json.Marshal(user)
+	w.Write(body)
+
+
+
+
+	log.Println("Successfully Uploaded File\n")
+
+}
+
+
+
 
 
 
@@ -206,7 +241,7 @@ func main() {
 	r.HandleFunc("/logout",handler.logout).Methods("POST")
 	r.HandleFunc("/photos",handler.savePhoto).Methods("POST")
 	r.HandleFunc("/photos/{id:[0-9]+}",handler.getPhoto).Methods("GET")
-	//r.HandleFunc("/users/{id:[0-9]+}").Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}",handler.getUser).Methods("GET")
 	log.Println("Server started")
 	http.ListenAndServe(":8080", corsMiddleware(r))
 
@@ -284,6 +319,7 @@ func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request)  {
 			expiration := time.Now().Add(365 * 24 * time.Hour)
 			cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
 			handlers.Sessions[cookie.Value] = user.ID
+			user.Password=""
 			body, err := json.Marshal(user)
 			if err != nil {
 				log.Printf("An error accured: %v", err)
@@ -299,6 +335,7 @@ func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request)  {
 			log.Println("Wrong password", user)
 			err=NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
 			handlers.sendError(err,w)
+			return
 		}
 	}
 
