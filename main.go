@@ -177,6 +177,25 @@ func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (handlers Handlers) getSession(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	user, err := handlers.parseCookie(sessionID)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	body, err := json.Marshal(user)
+	w.Write(body)
+
+	log.Println("Valid user session\n")
+
+}
+
 func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
 	log.Println("New request: ", r.Body)
 
@@ -229,6 +248,7 @@ func main() {
 	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
 	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
+	r.HandleFunc("/users", handler.getSession).Methods("GET")
 	log.Println("Server started")
 	http.ListenAndServe(":8080", corsMiddleware(r))
 
