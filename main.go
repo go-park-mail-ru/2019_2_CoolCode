@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
@@ -26,9 +26,6 @@ type ClientError interface {
 	ResponseBody() ([]byte, error)
 	ResponseHeaders() (int, map[string]string)
 }
-
-
-
 
 type HTTPError struct {
 	Cause  error
@@ -65,13 +62,12 @@ func NewClientError(err error, status int, detail string) ClientError {
 	}
 }
 
-
 type Handlers struct {
-	Users     UserStore
-	Sessions  map[string]uint
+	Users    UserStore
+	Sessions map[string]uint
 }
 
-func (handlers *Handlers) sendError(err error,w http.ResponseWriter) {
+func (handlers *Handlers) sendError(err error, w http.ResponseWriter) {
 	clientError, ok := err.(ClientError)
 	if !ok {
 		w.WriteHeader(500) // return 500 Internal Server Error.
@@ -101,7 +97,7 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 
 	user, err := handlers.parseCookie(sessionID)
 	loggedIn := err == nil
-	id:=strconv.Itoa(int(user.ID))
+	id := strconv.Itoa(int(user.ID))
 
 	if !loggedIn {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -112,13 +108,13 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error Retrieving the File")
 		fmt.Println(err)
-		err =  NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
-		handlers.sendError(err,w)
+		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
+		handlers.sendError(err, w)
 		return
 	}
 
-	err= handlers.Users.SavePhoto(file,id)
-	if err!=nil{
+	err = handlers.Users.SavePhoto(file, id)
+	if err != nil {
 		log.Printf("An error accured: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -134,17 +130,17 @@ func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	file,err:=handlers.Users.GetPhoto(requestedID)
-	if err!=nil{
+	file, err := handlers.Users.GetPhoto(requestedID)
+	if err != nil {
 		log.Printf("An error accured: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	reader:=bufio.NewReader(&file)
-	bytes := make([]byte,10 << 20)
+	reader := bufio.NewReader(&file)
+	bytes := make([]byte, 10<<20)
 	_, err = reader.Read(bytes)
 
-	w.Header().Set("content-type","multipart/form-data;boundary=1")
+	w.Header().Set("content-type", "multipart/form-data;boundary=1")
 	w.Write(bytes)
 
 	log.Println("Successfully Uploaded File\n")
@@ -166,45 +162,37 @@ func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user,err:=handlers.Users.GetUserByID(uint(requestedID))
+	user, err := handlers.Users.GetUserByID(uint(requestedID))
 	if err != nil {
 		log.Println("Get user error")
-		err=NewClientError(err, http.StatusBadRequest, "Bad request : invalid ID.")
-		handlers.sendError(err,w)
+		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid ID.")
+		handlers.sendError(err, w)
 	}
 
-	user.Password=""
+	user.Password = ""
 	body, err := json.Marshal(user)
 	w.Write(body)
-
-
-
 
 	log.Println("Successfully Uploaded File\n")
 
 }
 
-
-
-
-
-
 func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
-	log.Println("New request: ",r.Body)
+	log.Println("New request: ", r.Body)
 
 	var newUser User
-	body:=r.Body
+	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
 	if err != nil {
 		log.Println("Json decoding error")
-		err =  NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		handlers.sendError(err,w)
+		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err, w)
 		return
 	}
-	err=handlers.Users.AddUser(&newUser)
-	if err!=nil{
-		handlers.sendError(err,w)
+	err = handlers.Users.AddUser(&newUser)
+	if err != nil {
+		handlers.sendError(err, w)
 	}
 
 }
@@ -222,12 +210,11 @@ func main() {
 	handler.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedOrigins([]string{"http://127.0.0.1:3000"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 		handlers.AllowCredentials(),
 	)
-
 
 	r := mux.NewRouter()
 	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
@@ -235,22 +222,21 @@ func main() {
 		writer.Write([]byte("Mem"))
 
 	}).Methods("GET")
-	r.HandleFunc("/users",handler.signUp).Methods("POST")
-	r.HandleFunc("/login",handler.login).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}",handler.editProfile).Methods("PUT")
-	r.HandleFunc("/logout",handler.logout).Methods("POST")
-	r.HandleFunc("/photos",handler.savePhoto).Methods("POST")
-	r.HandleFunc("/photos/{id:[0-9]+}",handler.getPhoto).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}",handler.getUser).Methods("GET")
+	r.HandleFunc("/users", handler.signUp).Methods("POST")
+	r.HandleFunc("/login", handler.login).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", handler.editProfile).Methods("PUT")
+	r.HandleFunc("/logout", handler.logout).Methods("POST")
+	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
+	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
 	log.Println("Server started")
 	http.ListenAndServe(":8080", corsMiddleware(r))
 
-
 }
 func (handlers Handlers) parseCookie(cookie *http.Cookie) (User, error) {
-	id:=handlers.Sessions[cookie.Value]
-	user,err:=handlers.Users.GetUserByID(id)
-	if err==nil {
+	id := handlers.Sessions[cookie.Value]
+	user, err := handlers.Users.GetUserByID(id)
+	if err == nil {
 		return user, nil
 	} else {
 		return user, NewClientError(nil, http.StatusUnauthorized, "Bad request: not Cookie:(")
@@ -285,7 +271,7 @@ func (handlers *Handlers) editProfile(w http.ResponseWriter, r *http.Request) {
 		var editUser *User
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&editUser)
-		if editUser.ID!=user.ID{
+		if editUser.ID != user.ID {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -300,26 +286,28 @@ func (handlers *Handlers) editProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request)  {
+func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request) {
+	log.Println("New request: ", r.Body)
+
 	var loginUser User
-	body:=r.Body
+	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&loginUser)
 	if err != nil {
 		log.Println("Json decoding error")
-		 err=NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		 handlers.sendError(err,w)
+		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err, w)
 	}
 
-	user,err:=handlers.Users.GetUserByEmail(loginUser.Email)
-	if err==nil {
+	user, err := handlers.Users.GetUserByEmail(loginUser.Email)
+	if err == nil {
 		if user.Password == loginUser.Password {
 			//write cookie
 			token := uuid.New()
 			expiration := time.Now().Add(365 * 24 * time.Hour)
 			cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
 			handlers.Sessions[cookie.Value] = user.ID
-			user.Password=""
+			user.Password = ""
 			body, err := json.Marshal(user)
 			if err != nil {
 				log.Printf("An error accured: %v", err)
@@ -327,33 +315,35 @@ func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request)  {
 				return
 			}
 			http.SetCookie(w, &cookie)
-			w.Header().Set("content-type","application/json")
+			w.Header().Set("content-type", "application/json")
 			w.Write(body)
 			return
 
 		} else {
 			log.Println("Wrong password", user)
-			err=NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
-			handlers.sendError(err,w)
+			err = NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
+			handlers.sendError(err, w)
 			return
 		}
 	}
 
 	log.Println("Unregistered user", loginUser)
 	err = NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
-	handlers.sendError(err,w)
+	handlers.sendError(err, w)
 
 }
 
-func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request)  {
-		session, err := r.Cookie("session_id")
-		if err == http.ErrNoCookie {
-			log.Println("Not authorized")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		session.Expires = time.Now().AddDate(0, 0, -1)
-		http.SetCookie(w, session)
+func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request) {
+	log.Println("New request: ", r.Body)
+
+	session, err := r.Cookie("session_id")
+	if err == http.ErrNoCookie {
+		log.Println("Not authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	session.Expires = time.Now().AddDate(0, 0, -1)
+	http.SetCookie(w, session)
 }
 
 func addCorsHeader(w http.ResponseWriter, r *http.Request) {

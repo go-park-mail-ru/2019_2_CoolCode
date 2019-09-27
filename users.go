@@ -14,18 +14,18 @@ import (
 )
 
 type User struct {
-	ID       uint
-	Username string
-	Email    string
-	Name     string
-	Password string
-	Status   string
-	Photo    []byte
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Name     string `json:"fullname"`
+	Password string `json:"password"`
+	Status   string `json:"status"`
+	Photo    []byte `json:"photo"`
 }
 
 type UserStore struct {
-	users map[uint]*User
-	mutex sync.Mutex
+	users  map[uint]*User
+	mutex  sync.Mutex
 	nextID uint
 }
 
@@ -40,14 +40,12 @@ func (userStore *UserStore) readUsers(users Users) {
 }
 
 func (userStore *UserStore) saveUsers() {
-	usersSlice:=userStore.GetUsers()
+	usersSlice := userStore.GetUsers()
 	os.Remove("users.txt")
 	file, _ := os.Create("users.txt")
 	encoder := json.NewEncoder(file)
 	encoder.Encode(usersSlice)
 }
-
-
 
 func NewUserStore() UserStore {
 	return UserStore{
@@ -56,10 +54,10 @@ func NewUserStore() UserStore {
 	}
 }
 
-func (userStore UserStore)Contains(user User)  bool{
+func (userStore UserStore) Contains(user User) bool {
 
-	for _,v:=range userStore.users{
-		if user.Email==v.Email{
+	for _, v := range userStore.users {
+		if user.Email == v.Email {
 			return true
 		}
 	}
@@ -67,47 +65,40 @@ func (userStore UserStore)Contains(user User)  bool{
 	return false
 }
 
-func (userStore UserStore) GetUserByEmail(email string)  (User,error){
+func (userStore UserStore) GetUserByEmail(email string) (User, error) {
 	var resultUser User
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
-	for _,v:=range userStore.users{
-		if email==v.Email{
-			return *v,nil
+	for _, v := range userStore.users {
+		if email == v.Email {
+			return *v, nil
 		}
 	}
 
-	return resultUser,errors.New("user not contains")
+	return resultUser, errors.New("user not contains")
 }
 
-func (userStore UserStore) GetUserByID(ID uint)  (User,error){
+func (userStore UserStore) GetUserByID(ID uint) (User, error) {
 	var resultUser User
 	userStore.mutex.Lock()
-	if user,ok:=userStore.users[ID];ok{
-		return *user,nil
+	if user, ok := userStore.users[ID]; ok {
+		return *user, nil
 	}
 	userStore.mutex.Unlock()
-	return resultUser,errors.New("user not contains")
+	return resultUser, errors.New("user not contains")
 }
 
-
-
-func (userStore UserStore)ChangeUser(user *User){
+func (userStore UserStore) ChangeUser(user *User) {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
-	password:=user.Password
-	userStore.users[user.ID]=user
-	userStore.users[user.ID].Password=password
+	password := user.Password
+	userStore.users[user.ID] = user
+	userStore.users[user.ID].Password = password
 	userStore.mutex.Unlock()
 
 }
 
-
-
-
-
-
-func (userStore *UserStore)AddUser(newUser *User) error{
+func (userStore *UserStore) AddUser(newUser *User) error {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
@@ -116,16 +107,14 @@ func (userStore *UserStore)AddUser(newUser *User) error{
 		log.Println("User contains", newUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	}
-	userStore.nextID++;
+	userStore.nextID++
 	newUser.ID = userStore.nextID
 	userStore.users[newUser.ID] = newUser
-
 
 	return nil
 }
 
-
-func (userStore UserStore)GetUsers() Users {
+func (userStore UserStore) GetUsers() Users {
 	var usersSlice Users
 	for _, user := range userStore.users {
 		usersSlice.Users = append(usersSlice.Users, *user)
@@ -133,10 +122,8 @@ func (userStore UserStore)GetUsers() Users {
 	return usersSlice
 }
 
-func (userStore UserStore)SavePhoto(file multipart.File,id string) error {
+func (userStore UserStore) SavePhoto(file multipart.File, id string) error {
 	defer file.Close()
-
-
 
 	tempFile, err := ioutil.TempFile("photos", "upload-*.png")
 	if err != nil {
@@ -145,13 +132,12 @@ func (userStore UserStore)SavePhoto(file multipart.File,id string) error {
 	}
 	defer tempFile.Close()
 
-
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	err = os.Rename(tempFile.Name(),"photos/"+id+".png")
+	err = os.Rename(tempFile.Name(), "photos/"+id+".png")
 
 	if err != nil {
 		fmt.Println(err)
@@ -160,15 +146,12 @@ func (userStore UserStore)SavePhoto(file multipart.File,id string) error {
 	tempFile.Write(fileBytes)
 	return nil
 }
-func (userStore *UserStore) GetPhoto(id int) (os.File,error) {
-	fileName:=strconv.Itoa(id)
-	file,err:=os.Open("photos/"+fileName+".png")
-	if err!=nil{
+func (userStore *UserStore) GetPhoto(id int) (os.File, error) {
+	fileName := strconv.Itoa(id)
+	file, err := os.Open("photos/" + fileName + ".png")
+	if err != nil {
 		fmt.Println(err)
-		return *file,err
+		return *file, err
 	}
-	return *file,nil
+	return *file, nil
 }
-
-
-
