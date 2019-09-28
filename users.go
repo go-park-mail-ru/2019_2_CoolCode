@@ -19,7 +19,7 @@ type User struct {
 	Email    string `json:"email"`
 	Name     string `json:"fullname"`
 	Password string `json:"password"`
-	Status   string `json:"status"`
+	Status   string `json:"fstatus"`
 	Photo    []byte `json:"photo"`
 }
 
@@ -92,8 +92,15 @@ func (userStore UserStore) ChangeUser(user *User) {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
 	password := user.Password
+	oldPassword := userStore.users[user.ID].Password
+	fmt.Printf("%#v\n", user)
+	fmt.Printf("%#v\n", userStore.users[user.ID])
 	userStore.users[user.ID] = user
-	userStore.users[user.ID].Password = password
+	if password != "" {
+		userStore.users[user.ID].Password = password
+	} else {
+		userStore.users[user.ID].Password = oldPassword
+	}
 	userStore.mutex.Unlock()
 
 }
