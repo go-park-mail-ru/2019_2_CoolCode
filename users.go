@@ -20,7 +20,7 @@ type User struct {
 	Name     string `json:"fullname"`
 	Password string `json:"password"`
 	Status   string `json:"fstatus"`
-	Photo    []byte `json:"photo"`
+	Phone string `json:"phone"`
 }
 
 type UserStore struct {
