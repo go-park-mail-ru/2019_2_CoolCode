@@ -1,1 +1,1 @@
-{"users":[{"id":1,"username":"dmitrydorofey","email":"a@a.ru","fullname":"Dmitry Dorofeev","password":"1","fstatus":"I'm ","photo":null}]}
+{"users":[{"id":2,"username":"","email":"a1@a.ru","fullname":"","password":"1","fstatus":"","photo":null},{"id":2,"username":"lol","email":"mem@mail.ru","fullname":"John Doe","password":"mem","fstatus":"mem","photo":null}]}

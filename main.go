@@ -98,13 +98,13 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 	user, err := handlers.parseCookie(sessionID)
 	loggedIn := err == nil
 	id := strconv.Itoa(int(user.ID))
-
 	if !loggedIn {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	r.ParseMultipartForm(10 << 20)
 	file, _, err := r.FormFile("file")
+
 	if err != nil {
 		log.Println("Error Retrieving the File")
 		fmt.Println(err)
@@ -203,6 +203,12 @@ func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
 	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
+	if newUser.Name==""{
+		newUser.Name="John Doe"
+	}
+	if newUser.Username==""{
+		newUser.Username="Stereo"
+	}
 	if err != nil {
 		log.Println("Json decoding error")
 		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
@@ -229,7 +235,7 @@ func main() {
 	handler.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://127.0.0.1:3000"}),
+		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 		handlers.AllowCredentials(),
