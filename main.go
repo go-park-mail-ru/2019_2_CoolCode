@@ -119,7 +119,7 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Println("Successfully Downloaded File\n")
+	log.Println("Successfully Downloaded File")
 
 }
 
@@ -143,7 +143,7 @@ func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "multipart/form-data;boundary=1")
 	w.Write(bytes)
 
-	log.Println("Successfully Uploaded File\n")
+	log.Println("Successfully Uploaded File")
 
 }
 
@@ -154,15 +154,16 @@ func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	_, err = handlers.parseCookie(sessionID)
+	user, err := handlers.parseCookie(sessionID)
 	loggedIn := err == nil
 
 	if !loggedIn {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
-	user, err := handlers.Users.GetUserByID(uint(requestedID))
+	if requestedID != 0 {
+		user, err = handlers.Users.GetUserByID(uint(requestedID))
+	}
 	if err != nil {
 		log.Println("Get user error")
 		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid ID.")
@@ -173,7 +174,7 @@ func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
 	body, err := json.Marshal(user)
 	w.Write(body)
 
-	log.Println("Successfully Uploaded File\n")
+	log.Println("Successfully Uploaded File")
 
 }
 
@@ -192,7 +193,7 @@ func (handlers Handlers) getSession(w http.ResponseWriter, r *http.Request) {
 	body, err := json.Marshal(user)
 	w.Write(body)
 
-	log.Println("Valid user session\n")
+	log.Println("Valid user session")
 
 }
 
@@ -203,11 +204,11 @@ func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
 	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
-	if newUser.Name==""{
-		newUser.Name="John Doe"
+	if newUser.Name == "" {
+		newUser.Name = "John Doe"
 	}
-	if newUser.Username==""{
-		newUser.Username="Stereo"
+	if newUser.Username == "" {
+		newUser.Username = "Stereo"
 	}
 	if err != nil {
 		log.Println("Json decoding error")
@@ -231,22 +232,18 @@ func main() {
 	handler := Handlers{
 		Users:    NewUserStore(),
 		Sessions: make(map[string]uint, 0),
-	}
+	} //TODO:Constructor
 	handler.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com"}),
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 		handlers.AllowCredentials(),
 	)
 
 	r := mux.NewRouter()
-	//r.HandleFunc("/users",addCorsHeader).Methods("OPTIONS")
-	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		writer.Write([]byte("Mem"))
 
-	}).Methods("GET")
 	r.HandleFunc("/users", handler.signUp).Methods("POST")
 	r.HandleFunc("/login", handler.login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", handler.editProfile).Methods("PUT")
@@ -254,7 +251,7 @@ func main() {
 	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
 	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
-	r.HandleFunc("/users", handler.getSession).Methods("GET")
+	r.HandleFunc("/users", handler.getSession).Methods("GET") //TODO:Добавить в API
 	log.Println("Server started")
 	http.ListenAndServe(":8080", corsMiddleware(r))
 
@@ -279,12 +276,12 @@ func (handlers *Handlers) editProfile(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("An error accured: %v", err)
-		w.WriteHeader(500)
-		return
 	}
 	user, err := handlers.parseCookie(sessionID)
 	loggedIn := err == nil
-
+	if requestedID == 0 {
+		requestedID = int(user.ID)
+	}
 	if !loggedIn {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -368,6 +365,7 @@ func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	delete(handlers.Sessions, session.Value)
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
 }
@@ -376,3 +374,5 @@ func addCorsHeader(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handled pre-flight request")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
+
+//TODO: tests

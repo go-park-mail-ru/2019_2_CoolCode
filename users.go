@@ -20,7 +20,7 @@ type User struct {
 	Name     string `json:"fullname"`
 	Password string `json:"password"`
 	Status   string `json:"fstatus"`
-	Phone string `json:"phone"`
+	Phone    string `json:"phone"`
 }
 
 type UserStore struct {
@@ -54,7 +54,7 @@ func NewUserStore() UserStore {
 	}
 }
 
-func (userStore UserStore) Contains(user User) bool {
+func (userStore *UserStore) Contains(user User) bool {
 
 	for _, v := range userStore.users {
 		if user.Email == v.Email {
@@ -91,6 +91,7 @@ func (userStore UserStore) GetUserByID(ID uint) (User, error) {
 func (userStore UserStore) ChangeUser(user *User) {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
+	defer userStore.mutex.Unlock()
 	password := user.Password
 	oldPassword := userStore.users[user.ID].Password
 	fmt.Printf("%#v\n", user)
@@ -101,7 +102,6 @@ func (userStore UserStore) ChangeUser(user *User) {
 	} else {
 		userStore.users[user.ID].Password = oldPassword
 	}
-	userStore.mutex.Unlock()
 
 }
 
@@ -162,3 +162,5 @@ func (userStore *UserStore) GetPhoto(id int) (os.File, error) {
 	}
 	return *file, nil
 }
+
+//TODO: Handle errors
