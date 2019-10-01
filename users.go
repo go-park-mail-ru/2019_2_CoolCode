@@ -23,28 +23,14 @@ type User struct {
 	Phone    string `json:"phone"`
 }
 
-type UserStore struct {
-	users  map[uint]*User
-	mutex  sync.Mutex
-	nextID uint
-}
-
 type Users struct {
 	Users []User `json:"users"`
 }
 
-func (userStore *UserStore) readUsers(users Users) {
-	for _, user := range users.Users {
-		userStore.AddUser(&user)
-	}
-}
-
-func (userStore *UserStore) saveUsers() {
-	usersSlice := userStore.GetUsers()
-	os.Remove("users.txt")
-	file, _ := os.Create("users.txt")
-	encoder := json.NewEncoder(file)
-	encoder.Encode(usersSlice)
+type UserStore struct {
+	users  map[uint]*User
+	mutex  sync.Mutex
+	nextID uint
 }
 
 func NewUserStore() UserStore {
@@ -54,8 +40,37 @@ func NewUserStore() UserStore {
 	}
 }
 
-func (userStore *UserStore) Contains(user User) bool {
+func (userStore *UserStore) readUsers(users Users) {
+	for _, user := range users.Users {
+		err := userStore.AddUser(&user)
+		if err != nil {
+			log.Println("User adding error:", err.Error())
+			return
+		}
+	}
+}
 
+func (userStore *UserStore) saveUsers() {
+	usersSlice := userStore.GetUsers()
+	err := os.Remove("users.txt")
+	if err != nil {
+		log.Println(`Removing 'users.txt' error:`, err.Error())
+		return
+	}
+	file, err := os.Create("users.txt")
+	if err != nil {
+		log.Println(`Creating 'users.txt' error:`, err.Error())
+		return
+	}
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(usersSlice)
+	if err != nil {
+		log.Println(`JSON encoding error:`, err.Error())
+		return
+	}
+}
+
+func (userStore *UserStore) Contains(user User) bool {
 	for _, v := range userStore.users {
 		if user.Email == v.Email {
 			return true
@@ -69,6 +84,7 @@ func (userStore UserStore) GetUserByEmail(email string) (User, error) {
 	var resultUser User
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
+
 	for _, v := range userStore.users {
 		if email == v.Email {
 			return *v, nil
@@ -90,19 +106,19 @@ func (userStore UserStore) GetUserByID(ID uint) (User, error) {
 
 func (userStore UserStore) ChangeUser(user *User) {
 	defer userStore.saveUsers()
+
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
+
 	password := user.Password
 	oldPassword := userStore.users[user.ID].Password
-	fmt.Printf("%#v\n", user)
-	fmt.Printf("%#v\n", userStore.users[user.ID])
 	userStore.users[user.ID] = user
+
 	if password != "" {
 		userStore.users[user.ID].Password = password
 	} else {
 		userStore.users[user.ID].Password = oldPassword
 	}
-
 }
 
 func (userStore *UserStore) AddUser(newUser *User) error {
@@ -129,15 +145,30 @@ func (userStore UserStore) GetUsers() Users {
 	return usersSlice
 }
 
-func (userStore UserStore) SavePhoto(file multipart.File, id string) error {
-	defer file.Close()
+func (userStore UserStore) SavePhoto(file multipart.File, id string) (returnErr error) {
+	defer func() {
+		err := file.Close()
+
+		if err != nil && returnErr == nil {
+			fmt.Println(err)
+			returnErr = err
+		}
+	}()
 
 	tempFile, err := ioutil.TempFile("photos", "upload-*.png")
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	defer tempFile.Close()
+
+	defer func() {
+		err := tempFile.Close()
+
+		if err != nil && returnErr == nil {
+			fmt.Println(err)
+			returnErr = err
+		}
+	}()
 
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -150,7 +181,13 @@ func (userStore UserStore) SavePhoto(file multipart.File, id string) error {
 		fmt.Println(err)
 		return err
 	}
-	tempFile.Write(fileBytes)
+
+	_, err = tempFile.Write(fileBytes)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	return nil
 }
 func (userStore *UserStore) GetPhoto(id int) (os.File, error) {
@@ -162,5 +199,3 @@ func (userStore *UserStore) GetPhoto(id int) (os.File, error) {
 	}
 	return *file, nil
 }
-
-//TODO: Handle errors

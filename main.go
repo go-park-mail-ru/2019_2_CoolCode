@@ -16,10 +16,10 @@ import (
 
 //коды ошибок
 //200 - успех
-//500 - фатальная ошибка на сервере
-//401 - клиент не авторизован
 //400 - неправильные данные в запросе(логин/пароль и т.д.)
+//401 - клиент не авторизован
 //405 - неверный метод
+//500 - фатальная ошибка на сервере
 
 type ClientError interface {
 	Error() string
@@ -43,7 +43,7 @@ func (e HTTPError) Error() string {
 func (e HTTPError) ResponseBody() ([]byte, error) {
 	body, err := json.Marshal(e)
 	if err != nil {
-		return nil, fmt.Errorf("Error while parsing response body: %v", err)
+		return nil, fmt.Errorf("error while parsing response body: %v", err)
 	}
 	return body, nil
 }
@@ -76,7 +76,7 @@ func (handlers *Handlers) sendError(err error, w http.ResponseWriter) {
 
 	body, err := clientError.ResponseBody() // Try to get response body of ClientError.
 	if err != nil {
-		log.Printf("An error accured: %v", err)
+		log.Printf("An error occurred: %v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -85,7 +85,14 @@ func (handlers *Handlers) sendError(err error, w http.ResponseWriter) {
 		w.Header().Set(k, v)
 	}
 	w.WriteHeader(status)
-	w.Write(body)
+
+	_, err = w.Write(body)
+
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 }
 
 func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
@@ -96,13 +103,18 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := handlers.parseCookie(sessionID)
-	loggedIn := err == nil
-	id := strconv.Itoa(int(user.ID))
-	if !loggedIn {
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	r.ParseMultipartForm(10 << 20)
+	id := strconv.Itoa(int(user.ID))
+
+	err = r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 	file, _, err := r.FormFile("file")
 
 	if err != nil {
@@ -115,7 +127,7 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 
 	err = handlers.Users.SavePhoto(file, id)
 	if err != nil {
-		log.Printf("An error accured: %v", err)
+		log.Printf("An error occurred: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -132,7 +144,7 @@ func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 	file, err := handlers.Users.GetPhoto(requestedID)
 	if err != nil {
-		log.Printf("An error accured: %v", err)
+		log.Printf("An error occurred: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +153,13 @@ func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
 	_, err = reader.Read(bytes)
 
 	w.Header().Set("content-type", "multipart/form-data;boundary=1")
-	w.Write(bytes)
+
+	_, err = w.Write(bytes)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 
 	log.Println("Successfully Uploaded File")
 
@@ -172,13 +190,24 @@ func (handlers Handlers) getUser(w http.ResponseWriter, r *http.Request) {
 
 	user.Password = ""
 	body, err := json.Marshal(user)
-	w.Write(body)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 
 	log.Println("Successfully Uploaded File")
 
 }
 
-func (handlers Handlers) getSession(w http.ResponseWriter, r *http.Request) {
+func (handlers Handlers) getUserBySession(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := r.Cookie("session_id")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -191,10 +220,20 @@ func (handlers Handlers) getSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := json.Marshal(user)
-	w.Write(body)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 
 	log.Println("Valid user session")
-
 }
 
 func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
@@ -204,65 +243,21 @@ func (handlers *Handlers) signUp(w http.ResponseWriter, r *http.Request) {
 	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&newUser)
-	if newUser.Name == "" {
-		newUser.Name = "John Doe"
-	}
-	if newUser.Username == "" {
-		newUser.Username = "Stereo"
-	}
 	if err != nil {
 		log.Println("Json decoding error")
 		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 		handlers.sendError(err, w)
 		return
 	}
+	if newUser.Name == "" {
+		newUser.Name = "John Doe"
+	}
+	if newUser.Username == "" {
+		newUser.Username = "Stereo"
+	}
 	err = handlers.Users.AddUser(&newUser)
 	if err != nil {
 		handlers.sendError(err, w)
-	}
-
-}
-
-func main() {
-	reader, _ := os.Open("users.txt")
-	defer reader.Close()
-	var users Users
-	decoder := json.NewDecoder(reader)
-	_ = decoder.Decode(&users)
-	handler := Handlers{
-		Users:    NewUserStore(),
-		Sessions: make(map[string]uint, 0),
-	} //TODO:Constructor
-	handler.Users.readUsers(users)
-
-	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
-		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
-		handlers.AllowedHeaders([]string{"Content-Type"}),
-		handlers.AllowCredentials(),
-	)
-
-	r := mux.NewRouter()
-
-	r.HandleFunc("/users", handler.signUp).Methods("POST")
-	r.HandleFunc("/login", handler.login).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", handler.editProfile).Methods("PUT")
-	r.HandleFunc("/logout", handler.logout).Methods("POST")
-	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
-	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
-	r.HandleFunc("/users", handler.getSession).Methods("GET") //TODO:Добавить в API
-	log.Println("Server started")
-	http.ListenAndServe(":8080", corsMiddleware(r))
-
-}
-func (handlers Handlers) parseCookie(cookie *http.Cookie) (User, error) {
-	id := handlers.Sessions[cookie.Value]
-	user, err := handlers.Users.GetUserByID(id)
-	if err == nil {
-		return user, nil
-	} else {
-		return user, NewClientError(nil, http.StatusUnauthorized, "Bad request: not Cookie:(")
 	}
 }
 
@@ -272,41 +267,41 @@ func (handlers *Handlers) editProfile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
 
+	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		log.Printf("An error accured: %v", err)
+		log.Printf("An error occurred: %v", err)
 	}
+
 	user, err := handlers.parseCookie(sessionID)
-	loggedIn := err == nil
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	if requestedID == 0 {
 		requestedID = int(user.ID)
 	}
-	if !loggedIn {
+
+	if uint(requestedID) != user.ID {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
-	} else {
-		if uint(requestedID) != user.ID {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		var editUser *User
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&editUser)
-		if editUser.ID != user.ID {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		if err != nil {
-			log.Println("Json decoding error")
-			err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-			handlers.sendError(err, w)
-		}
-
-		handlers.Users.ChangeUser(editUser)
-
 	}
+
+	var editUser *User
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&editUser)
+	if editUser.ID != user.ID {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		log.Println("Json decoding error")
+		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err, w)
+	}
+
+	handlers.Users.ChangeUser(editUser)
 }
 
 func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request) {
@@ -333,13 +328,19 @@ func (handlers *Handlers) login(w http.ResponseWriter, r *http.Request) {
 			user.Password = ""
 			body, err := json.Marshal(user)
 			if err != nil {
-				log.Printf("An error accured: %v", err)
+				log.Printf("An error occurred: %v", err)
 				w.WriteHeader(500)
 				return
 			}
 			http.SetCookie(w, &cookie)
 			w.Header().Set("content-type", "application/json")
-			w.Write(body)
+
+			_, err = w.Write(body)
+			if err != nil {
+				log.Printf("An error occurred: %v", err)
+				w.WriteHeader(500)
+				return
+			}
 			return
 
 		} else {
@@ -365,14 +366,79 @@ func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
 	delete(handlers.Sessions, session.Value)
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
 }
 
+func (handlers Handlers) parseCookie(cookie *http.Cookie) (User, error) {
+	id := handlers.Sessions[cookie.Value]
+	user, err := handlers.Users.GetUserByID(id)
+	if err == nil {
+		return user, nil
+	} else {
+		return user, NewClientError(nil, http.StatusUnauthorized, "Bad request: no Cookie :(")
+	}
+}
+
 func addCorsHeader(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handled pre-flight request")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+}
+
+func main() {
+	reader, _ := os.Open("users.txt")
+
+	defer func() {
+		err := reader.Close()
+
+		if err != nil {
+			log.Printf("An error occurred: %v", err)
+		}
+	}()
+
+	var users Users
+	decoder := json.NewDecoder(reader)
+	err := decoder.Decode(&users)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		return
+	}
+	handler := Handlers{
+		Users:    NewUserStore(),
+		Sessions: make(map[string]uint, 0),
+	} //TODO:Constructor
+	handler.Users.readUsers(users)
+
+	corsMiddleware := handlers.CORS(
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
+		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
+		handlers.AllowedHeaders([]string{"Content-Type"}),
+		handlers.AllowCredentials(),
+	)
+
+	r := mux.NewRouter()
+
+	r.HandleFunc("/users", handler.signUp).Methods("POST")
+	r.HandleFunc("/login", handler.login).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", handler.editProfile).Methods("PUT")
+	r.HandleFunc("/logout", handler.logout).Methods("POST")
+	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
+	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
+	r.HandleFunc("/users", handler.getUserBySession).Methods("GET") //TODO:Добавить в API
+	log.Println("Server started")
+
+	err = http.ListenAndServe(":8080", corsMiddleware(r))
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		return
+	}
 }
 
 //TODO: tests
