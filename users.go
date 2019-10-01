@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
@@ -150,14 +149,14 @@ func (userStore UserStore) SavePhoto(file multipart.File, id string) (returnErr 
 		err := file.Close()
 
 		if err != nil && returnErr == nil {
-			fmt.Println(err)
+			log.Printf("An error occurred: %v", err)
 			returnErr = err
 		}
 	}()
 
 	tempFile, err := ioutil.TempFile("photos", "upload-*.png")
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
@@ -165,26 +164,26 @@ func (userStore UserStore) SavePhoto(file multipart.File, id string) (returnErr 
 		err := tempFile.Close()
 
 		if err != nil && returnErr == nil {
-			fmt.Println(err)
+			log.Printf("An error occurred: %v", err)
 			returnErr = err
 		}
 	}()
 
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("An error occurred: %v", err)
 		return err
 	}
 	err = os.Rename(tempFile.Name(), "photos/"+id+".png")
 
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
 	_, err = tempFile.Write(fileBytes)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
@@ -194,7 +193,7 @@ func (userStore *UserStore) GetPhoto(id int) (os.File, error) {
 	fileName := strconv.Itoa(id)
 	file, err := os.Open("photos/" + fileName + ".png")
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("An error occurred: %v", err)
 		return *file, err
 	}
 	return *file, nil

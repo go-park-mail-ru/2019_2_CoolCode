@@ -118,8 +118,7 @@ func (handlers Handlers) savePhoto(w http.ResponseWriter, r *http.Request) {
 	file, _, err := r.FormFile("file")
 
 	if err != nil {
-		log.Println("Error Retrieving the File")
-		fmt.Println(err)
+		log.Printf("Error Retrieving the File: %v", err)
 		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
 		handlers.sendError(err, w)
 		return
