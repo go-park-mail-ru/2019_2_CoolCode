@@ -179,7 +179,7 @@ func TestSession(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.getSession(w, req)
+		api.getUserBySession(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
