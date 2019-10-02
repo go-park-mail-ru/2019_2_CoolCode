@@ -54,7 +54,6 @@ func (userStore *UserStore) saveUsers() {
 	err := os.Remove("users.txt")
 	if err != nil {
 		log.Println(`Removing 'users.txt' error:`, err.Error())
-		return
 	}
 	file, err := os.Create("users.txt")
 	if err != nil {

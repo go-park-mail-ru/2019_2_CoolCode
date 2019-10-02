@@ -365,11 +365,6 @@ func (handlers *Handlers) logout(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if err != nil {
-		log.Printf("An error occurred: %v", err)
-		w.WriteHeader(500)
-		return
-	}
 	delete(handlers.Sessions, session.Value)
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
@@ -383,11 +378,6 @@ func (handlers Handlers) parseCookie(cookie *http.Cookie) (User, error) {
 	} else {
 		return user, NewClientError(nil, http.StatusUnauthorized, "Bad request: no Cookie :(")
 	}
-}
-
-func addCorsHeader(w http.ResponseWriter, r *http.Request) {
-	log.Println("Handled pre-flight request")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func main() {
@@ -408,11 +398,11 @@ func main() {
 		log.Printf("An error occurred: %v", err)
 		return
 	}
-	handler := Handlers{
+	api := Handlers{
 		Users:    NewUserStore(),
 		Sessions: make(map[string]uint, 0),
 	} //TODO:Constructor
-	handler.Users.readUsers(users)
+	api.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -423,14 +413,14 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/users", handler.signUp).Methods("POST")
-	r.HandleFunc("/login", handler.login).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", handler.editProfile).Methods("PUT")
-	r.HandleFunc("/logout", handler.logout).Methods("POST")
-	r.HandleFunc("/photos", handler.savePhoto).Methods("POST")
-	r.HandleFunc("/photos/{id:[0-9]+}", handler.getPhoto).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}", handler.getUser).Methods("GET")
-	r.HandleFunc("/users", handler.getUserBySession).Methods("GET") //TODO:Добавить в API
+	r.HandleFunc("/users", api.signUp).Methods("POST")
+	r.HandleFunc("/login", api.login).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", api.editProfile).Methods("PUT")
+	r.HandleFunc("/logout", api.logout).Methods("POST")
+	r.HandleFunc("/photos", api.savePhoto).Methods("POST")
+	r.HandleFunc("/photos/{id:[0-9]+}", api.getPhoto).Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}", api.getUser).Methods("GET")
+	r.HandleFunc("/users", api.getUserBySession).Methods("GET") //TODO:Добавить в API
 	log.Println("Server started")
 
 	err = http.ListenAndServe(":8080", corsMiddleware(r))
@@ -440,4 +430,3 @@ func main() {
 	}
 }
 
-//TODO: tests

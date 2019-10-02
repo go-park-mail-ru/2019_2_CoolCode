@@ -13,6 +13,7 @@ import (
 
 type TestCase struct {
 	Body       interface{}
+	SessionID string
 	Headers    map[string]string
 	Method     string
 	URL        string
@@ -29,7 +30,7 @@ var api = Handlers{
 	Sessions: make(map[string]uint, 0),
 }
 
-var sessionID string
+var globalSessionID string
 
 func AddContext(r *http.Request, key string, value string) {
 	context.Set(r, key, value)
@@ -113,12 +114,22 @@ func TestLogin(t *testing.T) {
 		TestCase{
 			Body: User{
 				Email:    "test1@test.com",
-				Password: "1",
+				Password: "2",
 			},
 			Method:     "POST",
 			URL:        "/login",
 			Response:   `{"status": 500, "err": "db_error"}`,
-			StatusCode: http.StatusOK,
+			StatusCode: http.StatusBadRequest,
+		},
+		TestCase{
+			Body: User{
+				Email:    "test2@test.com",
+				Password: "2",
+			},
+			Method:     "POST",
+			URL:        "/login",
+			Response:   `{"status": 500, "err": "db_error"}`,
+			StatusCode: http.StatusBadRequest,
 		},
 	}
 
@@ -140,7 +151,10 @@ func TestLogin(t *testing.T) {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
 				testNum, w.Code, test.StatusCode)
 		}
-		sessionID = w.Header().Get("Set-Cookie")
+
+		if w.Code==http.StatusOK {
+			globalSessionID = w.Header().Get("Set-Cookie")
+		}
 	}
 
 }
@@ -149,9 +163,7 @@ func TestSession(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
 			Method: "GET",
-			Headers: map[string]string{
-				"Cookie": sessionID,
-			},
+			SessionID:globalSessionID,
 			URL:        "/users",
 			Response:   `{"status": 200, "resp": {"user": 42}}`,
 			StatusCode: http.StatusOK,
@@ -177,6 +189,10 @@ func TestSession(t *testing.T) {
 		for k, v := range test.Headers {
 			req.Header.Set(k, v)
 		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
+		}
+
 
 		w := httptest.NewRecorder()
 		api.getUserBySession(w, req)
@@ -193,12 +209,15 @@ func TestGetUser(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
 			Method: "GET",
-			Headers: map[string]string{
-				"Cookie": sessionID,
-			},
+			SessionID:globalSessionID,
 			URL:        "/users/1",
 			Response:   `{"id":1,"username":"Stereo","email":"test1@test.com","fullname":"John Doe","password":"","fstatus":"","phone":""}`,
 			StatusCode: http.StatusOK,
+		},
+		TestCase{
+			Method: "GET",
+			URL:        "/users/1",
+			StatusCode: http.StatusUnauthorized,
 		},
 	}
 
@@ -214,6 +233,9 @@ func TestGetUser(t *testing.T) {
 		}
 		for k, v := range test.Headers {
 			req.Header.Set(k, v)
+		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
 		}
 
 		w := httptest.NewRecorder()
@@ -245,11 +267,19 @@ func TestEditUser(t *testing.T) {
 				Password: "1",
 			},
 			Method: "PUT",
-			Headers: map[string]string{
-				"Cookie": sessionID,
-			},
+			SessionID:globalSessionID,
 			URL:        "/users/1",
 			StatusCode: http.StatusOK,
+		},
+		TestCase{
+			Body: User{
+				ID:       1,
+				Email:    "test1@test.com",
+				Password: "1",
+			},
+			Method: "PUT",
+			URL:        "/users/1",
+			StatusCode: http.StatusUnauthorized,
 		},
 	}
 
@@ -265,6 +295,9 @@ func TestEditUser(t *testing.T) {
 		}
 		for k, v := range test.Headers {
 			req.Header.Set(k, v)
+		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
 		}
 
 		w := httptest.NewRecorder()
@@ -282,11 +315,16 @@ func TestLogout(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
 			Method: "POST",
-			Headers: map[string]string{
-				"Cookie": sessionID,
-			},
+
+			SessionID:globalSessionID,
 			URL:        "/logout",
 			StatusCode: http.StatusOK,
+		},
+		TestCase{
+			Method: "POST",
+
+			URL:        "/logout",
+			StatusCode: http.StatusUnauthorized,
 		},
 	}
 
@@ -302,6 +340,9 @@ func TestLogout(t *testing.T) {
 		}
 		for k, v := range test.Headers {
 			req.Header.Set(k, v)
+		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
 		}
 
 		w := httptest.NewRecorder()
@@ -324,9 +365,7 @@ func TestEditUserAfterLogout(t *testing.T) {
 				Password: "1",
 			},
 			Method: "PUT",
-			Headers: map[string]string{
-				"Cookie": sessionID,
-			},
+			SessionID:globalSessionID,
 			URL:        "/users/1",
 			StatusCode: http.StatusUnauthorized,
 		},
@@ -345,6 +384,9 @@ func TestEditUserAfterLogout(t *testing.T) {
 		for k, v := range test.Headers {
 			req.Header.Set(k, v)
 		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
+		}
 
 		w := httptest.NewRecorder()
 		api.editProfile(w, req)
@@ -356,3 +398,41 @@ func TestEditUserAfterLogout(t *testing.T) {
 	}
 
 }
+
+func TestGetPgoto(t *testing.T) {
+	cases := []TestCase{
+		TestCase{
+			Method: "GET",
+			URL:        "/photos/1",
+			StatusCode: http.StatusUnauthorized,
+		},
+	}
+
+	for testNum, test := range cases {
+		userJSON, err := json.Marshal(test.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := bytes.NewReader(userJSON)
+		req, err := http.NewRequest(test.Method, test.URL, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range test.Headers {
+			req.Header.Set(k, v)
+		}
+		if test.SessionID!="" {
+			req.Header.Set("Cookie",test.SessionID)
+		}
+
+		w := httptest.NewRecorder()
+		api.getPhoto(w, req)
+
+		if w.Code != test.StatusCode {
+			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
+				testNum, w.Code, test.StatusCode)
+		}
+	}
+
+}
+
