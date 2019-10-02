@@ -419,7 +419,7 @@ func main() {
 	r.HandleFunc("/users", api.signUp).Methods("POST")
 	r.HandleFunc("/login", api.login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", api.editProfile).Methods("PUT")
-	r.HandleFunc("/logout", api.logout).Methods("POST")
+	r.HandleFunc("/logout", api.logout).Methods("DELETE")
 	r.HandleFunc("/photos", api.savePhoto).Methods("POST")
 	r.HandleFunc("/photos/{id:[0-9]+}", api.getPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", api.getUser).Methods("GET")
