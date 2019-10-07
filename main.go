@@ -67,6 +67,13 @@ type Handlers struct {
 	Sessions map[string]uint
 }
 
+func NewHandlers() *Handlers {
+	return &Handlers{
+		Users:    NewUserStore(),
+		Sessions: make(map[string]uint, 0),
+	}
+}
+
 func (handlers *Handlers) sendError(err error, w http.ResponseWriter) {
 	clientError, ok := err.(ClientError)
 	if !ok {
@@ -385,7 +392,6 @@ func main() {
 
 	defer func() {
 		err := reader.Close()
-
 		if err != nil {
 			log.Printf("An error occurred: %v", err)
 		}
@@ -398,14 +404,11 @@ func main() {
 		log.Printf("An error occurred: %v", err)
 		return
 	}
-	api := Handlers{
-		Users:    NewUserStore(),
-		Sessions: make(map[string]uint, 0),
-	} //TODO:Constructor
+	api := NewHandlers()
 	api.Users.readUsers(users)
 
 	corsMiddleware := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
+		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "PUT", "DELETE"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 		handlers.AllowCredentials(),
@@ -416,7 +419,7 @@ func main() {
 	r.HandleFunc("/users", api.signUp).Methods("POST")
 	r.HandleFunc("/login", api.login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", api.editProfile).Methods("PUT")
-	r.HandleFunc("/logout", api.logout).Methods("POST")
+	r.HandleFunc("/logout", api.logout).Methods("DELETE")
 	r.HandleFunc("/photos", api.savePhoto).Methods("POST")
 	r.HandleFunc("/photos/{id:[0-9]+}", api.getPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", api.getUser).Methods("GET")
@@ -429,4 +432,3 @@ func main() {
 		return
 	}
 }
-
