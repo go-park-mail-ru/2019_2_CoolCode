@@ -68,7 +68,7 @@ func (userStore *UserStore) saveUsers() {
 	}
 }
 
-func (userStore *UserStore) Contains(user User) bool {
+func (userStore *UserStore) contains(user User) bool {
 	for _, v := range userStore.users {
 		if user.Email == v.Email {
 			return true
@@ -124,7 +124,7 @@ func (userStore *UserStore) AddUser(newUser *User) error {
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
 
-	if userStore.Contains(*newUser) {
+	if userStore.contains(*newUser) {
 		log.Println("User contains", newUser)
 		return NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	}
