@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/AntonPriyma/2019_2_CoolCode/delivery"
+	"github.com/AntonPriyma/2019_2_CoolCode/models"
+	"github.com/AntonPriyma/2019_2_CoolCode/repository"
+	"github.com/AntonPriyma/2019_2_CoolCode/useCase"
 	"github.com/gorilla/context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
@@ -25,9 +28,9 @@ type InvalidJson struct {
 	data string
 }
 
-var api = Handlers{
-	Users:    NewUserStore(),
-	Sessions: make(map[string]uint, 0),
+var api = delivery.UserHandlers{
+	Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
+	Sessions: make(map[string]uint64, 0),
 }
 
 var globalSessionID string
@@ -36,21 +39,22 @@ func AddContext(r *http.Request, key string, value string) {
 	context.Set(r, key, value)
 }
 
-func TestPreTest(t *testing.T) {
-	reader, _ := os.Open("users.txt")
-	defer reader.Close()
-	var users Users
-	decoder := json.NewDecoder(reader)
-	_ = decoder.Decode(&users)
-	api.Users.readUsers(users)
-}
+//func TestPreTest(t *testing.T) {
+//	reader, _ := os.Open("users.txt")
+//	defer reader.Close()
+//	var users Users
+//	decoder := json.NewDecoder(reader)
+//	_ = decoder.Decode(&users)
+//	api.Users.readUsers(users)
+//}
 
 func TestSignUp(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			Body: User{
+			Body: models.User{
 				Email:    "test1@test.com",
 				Password: "1",
+				Username:"test",
 			},
 			Method:     "POST",
 			URL:        "/users",
@@ -58,7 +62,7 @@ func TestSignUp(t *testing.T) {
 			StatusCode: http.StatusOK,
 		},
 		TestCase{
-			Body: User{
+			Body: models.User{
 				Email:    "test1@test.com",
 				Password: "1",
 			},
@@ -89,7 +93,7 @@ func TestSignUp(t *testing.T) {
 			t.Fatal(err)
 		}
 		w := httptest.NewRecorder()
-		api.signUp(w, req)
+		api.SignUp(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -102,7 +106,7 @@ func TestSignUp(t *testing.T) {
 func TestLogin(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			Body: User{
+			Body: models.User{
 				Email:    "test1@test.com",
 				Password: "1",
 			},
@@ -112,7 +116,7 @@ func TestLogin(t *testing.T) {
 			StatusCode: http.StatusOK,
 		},
 		TestCase{
-			Body: User{
+			Body: models.User{
 				Email:    "test1@test.com",
 				Password: "2",
 			},
@@ -122,7 +126,7 @@ func TestLogin(t *testing.T) {
 			StatusCode: http.StatusBadRequest,
 		},
 		TestCase{
-			Body: User{
+			Body: models.User{
 				Email:    "test2@test.com",
 				Password: "2",
 			},
@@ -145,7 +149,7 @@ func TestLogin(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.login(w, req)
+		api.Login(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -194,7 +198,7 @@ func TestSession(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.getUserBySession(w, req)
+		api.GetUserBySession(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -210,7 +214,7 @@ func TestGetUser(t *testing.T) {
 			Method:     "GET",
 			SessionID:  globalSessionID,
 			URL:        "/users/1",
-			Response:   `{"id":1,"username":"Stereo","email":"test1@test.com","fullname":"John Doe","password":"","fstatus":"","phone":""}`,
+			Response:   `{"id":1,"username":"test","email":"test1@test.com","fullname":"John Doe","password":"","fstatus":"","phone":""}`,
 			StatusCode: http.StatusOK,
 		},
 		TestCase{
@@ -238,7 +242,7 @@ func TestGetUser(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.getUser(w, req)
+		api.GetUser(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -257,10 +261,51 @@ func TestGetUser(t *testing.T) {
 
 }
 
+func TestFindUsers(t *testing.T) {
+	cases := []TestCase{
+		TestCase{
+			Body: models.FindUsersModel{
+				Name:"tes",
+			},
+			SessionID:globalSessionID,
+			Method:     "POST",
+			URL:        "/users/tes",
+			StatusCode: http.StatusOK,
+		},
+	}
+
+	for testNum, test := range cases {
+		userJSON, err := json.Marshal(test.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := bytes.NewReader(userJSON)
+		req, err := http.NewRequest(test.Method, test.URL, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range test.Headers {
+			req.Header.Set(k, v)
+		}
+		if test.SessionID != "" {
+			req.Header.Set("Cookie", test.SessionID)
+		}
+
+		w := httptest.NewRecorder()
+		api.FindUsers(w, req)
+
+		if w.Code != test.StatusCode {
+			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
+				testNum, w.Code, test.StatusCode)
+		}
+	}
+
+}
+
 func TestEditUser(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			Body: User{
+			Body: models.User{
 				ID:       1,
 				Email:    "test1@test.com",
 				Password: "1",
@@ -271,7 +316,7 @@ func TestEditUser(t *testing.T) {
 			StatusCode: http.StatusOK,
 		},
 		TestCase{
-			Body: User{
+			Body: models.User{
 				ID:       1,
 				Email:    "test1@test.com",
 				Password: "1",
@@ -300,7 +345,7 @@ func TestEditUser(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.editProfile(w, req)
+		api.EditProfile(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -309,6 +354,8 @@ func TestEditUser(t *testing.T) {
 	}
 
 }
+
+
 
 func TestLogout(t *testing.T) {
 	cases := []TestCase{
@@ -345,7 +392,7 @@ func TestLogout(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.logout(w, req)
+		api.Logout(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -358,7 +405,7 @@ func TestLogout(t *testing.T) {
 func TestEditUserAfterLogout(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			Body: User{
+			Body: models.User{
 				ID:       1,
 				Email:    "test1@test.com",
 				Password: "1",
@@ -388,7 +435,7 @@ func TestEditUserAfterLogout(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.editProfile(w, req)
+		api.EditProfile(w, req)
 
 		if w.Code != test.StatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
@@ -398,39 +445,39 @@ func TestEditUserAfterLogout(t *testing.T) {
 
 }
 
-func TestGetPgoto(t *testing.T) {
-	cases := []TestCase{
-		TestCase{
-			Method:     "GET",
-			URL:        "/photos/1",
-			StatusCode: http.StatusUnauthorized,
-		},
-	}
-
-	for testNum, test := range cases {
-		userJSON, err := json.Marshal(test.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		body := bytes.NewReader(userJSON)
-		req, err := http.NewRequest(test.Method, test.URL, body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for k, v := range test.Headers {
-			req.Header.Set(k, v)
-		}
-		if test.SessionID != "" {
-			req.Header.Set("Cookie", test.SessionID)
-		}
-
-		w := httptest.NewRecorder()
-		api.getPhoto(w, req)
-
-		if w.Code != test.StatusCode {
-			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
-				testNum, w.Code, test.StatusCode)
-		}
-	}
-
-}
+//func TestGetPgoto(t *testing.T) {
+//	cases := []TestCase{
+//		TestCase{
+//			Method:     "GET",
+//			URL:        "/photos/1",
+//			StatusCode: http.StatusUnauthorized,
+//		},
+//	}
+//
+//	for testNum, test := range cases {
+//		userJSON, err := json.Marshal(test.Body)
+//		if err != nil {
+//			t.Fatal(err)
+//		}
+//		body := bytes.NewReader(userJSON)
+//		req, err := http.NewRequest(test.Method, test.URL, body)
+//		if err != nil {
+//			t.Fatal(err)
+//		}
+//		for k, v := range test.Headers {
+//			req.Header.Set(k, v)
+//		}
+//		if test.SessionID != "" {
+//			req.Header.Set("Cookie", test.SessionID)
+//		}
+//
+//		w := httptest.NewRecorder()
+//		api.getPhoto(w, req)
+//
+//		if w.Code != test.StatusCode {
+//			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",
+//				testNum, w.Code, test.StatusCode)
+//		}
+//	}
+//
+//}

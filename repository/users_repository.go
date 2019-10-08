@@ -4,7 +4,9 @@ import "github.com/AntonPriyma/2019_2_CoolCode/models"
 
 type UserRepo interface {
 	GetUserByEmail(email string) (models.User, error)
-	GetUserByID(ID uint) (models.User, error)
-	PutUser(user models.User) error
-	Contains(email string) bool
+	GetUserByID(ID uint64) (models.User, error)
+	PutUser(newUser *models.User) error
+	Replace(ID uint64,newUser *models.User) error
+	Contains(user models.User) bool
+	GetUsers() models.Users
 }
