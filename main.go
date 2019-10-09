@@ -33,8 +33,8 @@ func main() {
 	r.HandleFunc("/login", api.Login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", api.EditProfile).Methods("PUT")
 	r.HandleFunc("/logout", api.Logout).Methods("DELETE")
-	//r.HandleFunc("/photos", api.savePhoto).Methods("POST")
-	//r.HandleFunc("/photos/{id:[0-9]+}", api.getPhoto).Methods("GET")
+	r.HandleFunc("/photos", api.SavePhoto).Methods("POST")
+	r.HandleFunc("/photos/{id:[0-9]+}", api.GetPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", api.GetUser).Methods("GET")
 	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", api.FindUsers).Methods("GET")
 	r.HandleFunc("/users", api.GetUserBySession).Methods("GET") //TODO:Добавить в API

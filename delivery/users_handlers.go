@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"bufio"
 	"encoding/json"
 	"github.com/AntonPriyma/2019_2_CoolCode/models"
 	"github.com/AntonPriyma/2019_2_CoolCode/repository"
@@ -17,12 +18,14 @@ import (
 
 type UserHandlers struct {
 	Users    useCase.UsersUseCase
+	Photos repository.PhotoRepository
 	Sessions map[string]uint64
 }
 
 func NewHandlers() *UserHandlers {
 	return &UserHandlers{
 		Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
+		Photos:  repository.NewPhotosArrayRepository("photos/"),
 		Sessions: make(map[string]uint64, 0),
 	}
 }
@@ -56,74 +59,74 @@ func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
 	}
 }
 
-//func (handlers UserHandlers) savePhoto(w http.ResponseWriter, r *http.Request) {
-//	sessionID, err := r.Cookie("session_id")
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//
-//	user, err := handlers.parseCookie(sessionID)
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//	id := strconv.Itoa(int(user.ID))
-//
-//	err = r.ParseMultipartForm(10 << 20)
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(500)
-//		return
-//	}
-//	file, _, err := r.FormFile("file")
-//
-//	if err != nil {
-//		log.Printf("Error Retrieving the File: %v", err)
-//		err = NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
-//		handlers.sendError(err, w)
-//		return
-//	}
-//
-//	err = handlers.Users.SavePhoto(file, id)
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(http.StatusInternalServerError)
-//		return
-//	}
-//	log.Println("Successfully Downloaded File")
-//
-//}
-//
-//func (handlers Handlers) getPhoto(w http.ResponseWriter, r *http.Request) {
-//	_, err := r.Cookie("session_id")
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-//	file, err := handlers.Users.GetPhoto(requestedID)
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(http.StatusInternalServerError)
-//		return
-//	}
-//	reader := bufio.NewReader(&file)
-//	bytes := make([]byte, 10<<20)
-//	_, err = reader.Read(bytes)
-//
-//	w.Header().Set("content-type", "multipart/form-data;boundary=1")
-//
-//	_, err = w.Write(bytes)
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(500)
-//		return
-//	}
-//
-//	log.Println("Successfully Uploaded File")
-//
-//}
+func (handlers *UserHandlers) SavePhoto(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	user, err := handlers.parseCookie(sessionID)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	id := strconv.Itoa(int(user.ID))
+
+	err = r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	file, _, err := r.FormFile("file")
+
+	if err != nil {
+		log.Printf("Error Retrieving the File: %v", err)
+		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
+		handlers.sendError(err, w)
+		return
+	}
+
+	err = handlers.Photos.SavePhoto(file, id)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Println("Successfully Downloaded File")
+
+}
+
+func (handlers *UserHandlers) GetPhoto(w http.ResponseWriter, r *http.Request) {
+	_, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
+	file, err := handlers.Photos.GetPhoto(requestedID)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	reader := bufio.NewReader(&file)
+	bytes := make([]byte, 10<<20)
+	_, err = reader.Read(bytes)
+
+	w.Header().Set("content-type", "multipart/form-data;boundary=1")
+
+	_, err = w.Write(bytes)
+	if err != nil {
+		log.Printf("An error occurred: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	log.Println("Successfully Uploaded File")
+
+}
 
 func (handlers UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := r.Cookie("session_id")
