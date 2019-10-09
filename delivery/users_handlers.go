@@ -372,20 +372,23 @@ func (handlers UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Req
 }
 
 func (handlers UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
-	var body models.FindUsersModel
-	_, err := r.Cookie("session_id")
+	name:=mux.Vars(r)["name"]
+	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	decoder := json.NewDecoder(r.Body)
-	err = decoder.Decode(&body)
+	user,err:=handlers.parseCookie(cookie)
 	if err != nil {
-		log.Println("Json decoding error")
-		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		handlers.sendError(err, w)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
-	users,err:=handlers.Users.FindUsers(body.Name)
+	if name==""{
+		name = user.Username
+	}
+
+
+	users,err:=handlers.Users.FindUsers(name)
 	if err!=nil{
 		handlers.sendError(err,w)
 	}

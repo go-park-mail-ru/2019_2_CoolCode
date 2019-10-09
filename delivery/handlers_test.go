@@ -1,9 +1,8 @@
-package main
+package delivery
 
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/AntonPriyma/2019_2_CoolCode/delivery"
 	"github.com/AntonPriyma/2019_2_CoolCode/models"
 	"github.com/AntonPriyma/2019_2_CoolCode/repository"
 	"github.com/AntonPriyma/2019_2_CoolCode/useCase"
@@ -28,7 +27,7 @@ type InvalidJson struct {
 	data string
 }
 
-var api = delivery.UserHandlers{
+var api = UserHandlers{
 	Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
 	Sessions: make(map[string]uint64, 0),
 }
@@ -264,11 +263,8 @@ func TestGetUser(t *testing.T) {
 func TestFindUsers(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			Body: models.FindUsersModel{
-				Name:"tes",
-			},
 			SessionID:globalSessionID,
-			Method:     "POST",
+			Method:     "GET",
 			URL:        "/users/tes",
 			StatusCode: http.StatusOK,
 		},
@@ -308,7 +304,6 @@ func TestEditUser(t *testing.T) {
 			Body: models.User{
 				ID:       1,
 				Email:    "test1@test.com",
-				Password: "1",
 			},
 			Method:     "PUT",
 			SessionID:  globalSessionID,

@@ -79,7 +79,18 @@ func(u *usersUseCase)ChangeUser(user *models.User) error{
 	if !u.repository.Contains(*user){
 		return models.NewClientError(nil, http.StatusBadRequest, "Bad request : user not contains.")
 	}else {
-		err:=u.repository.Replace(user.ID,user)
+		oldUser,err:=u.repository.GetUserByID(user.ID)
+		if err!=nil { // return 500 Internal Server Error.
+			log.Printf("An error occurred: %v", err)
+			return models.NewServerError(err,http.StatusInternalServerError,"")
+		}
+		if user.Email==""{
+			return models.NewClientError(nil,400,"Bad req: empty email:(")
+		}
+		if user.Password==""{
+			user.Password=oldUser.Password
+		}
+		err=u.repository.Replace(user.ID,user)
 		if err!=nil { // return 500 Internal Server Error.
 			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err,http.StatusInternalServerError,"")
@@ -92,6 +103,7 @@ func(u *usersUseCase) FindUsers(name string) (models.Users,error){
 	var result models.Users
 	for _,user:=range u.repository.GetUsers().Users{
 		if strings.HasPrefix(user.Username,name){
+			user.Password=""
 			result.Users = append(result.Users,user)
 		}
 	}

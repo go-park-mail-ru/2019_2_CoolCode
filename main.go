@@ -36,7 +36,7 @@ func main() {
 	//r.HandleFunc("/photos", api.savePhoto).Methods("POST")
 	//r.HandleFunc("/photos/{id:[0-9]+}", api.getPhoto).Methods("GET")
 	r.HandleFunc("/users/{id:[0-9]+}", api.GetUser).Methods("GET")
-	r.HandleFunc("/users/{name:[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$}", api.GetUser).Methods("POST")
+	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", api.FindUsers).Methods("GET")
 	r.HandleFunc("/users", api.GetUserBySession).Methods("GET") //TODO:Добавить в API
 	log.Println("Server started")
 
