@@ -3,7 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"errors"
-	"github.com/AntonPriyma/2019_2_CoolCode/models"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"log"
 	"os"
 	"sync"
@@ -20,7 +20,7 @@ func NewArrayUserStore() UserRepo {
 		mutex: sync.Mutex{},
 		users: make(map[uint64]*models.User, 0),
 	}
-	reader, _ := os.Open("users.txt")
+	reader, _ := os.Open("chats.txt")
 
 	defer func() {
 		err := reader.Close()
@@ -52,13 +52,13 @@ func (userStore *ArrayUserStore) readUsers(users models.Users) {
 
 func (userStore *ArrayUserStore) saveUsers() {
 	usersSlice := userStore.GetUsers()
-	err := os.Remove("users.txt")
+	err := os.Remove("chats.txt")
 	if err != nil {
-		log.Println(`Removing 'users.txt' error:`, err.Error())
+		log.Println(`Removing 'chats.txt' error:`, err.Error())
 	}
-	file, err := os.Create("users.txt")
+	file, err := os.Create("chats.txt")
 	if err != nil {
-		log.Println(`Creating 'users.txt' error:`, err.Error())
+		log.Println(`Creating 'chats.txt' error:`, err.Error())
 		return
 	}
 	encoder := json.NewEncoder(file)

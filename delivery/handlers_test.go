@@ -3,9 +3,9 @@ package delivery
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/AntonPriyma/2019_2_CoolCode/models"
-	"github.com/AntonPriyma/2019_2_CoolCode/repository"
-	"github.com/AntonPriyma/2019_2_CoolCode/useCase"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/gorilla/context"
 	"io/ioutil"
 	"net/http"

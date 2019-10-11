@@ -1,6 +1,6 @@
 package repository
 
-import "github.com/AntonPriyma/2019_2_CoolCode/models"
+import "github.com/go-park-mail-ru/2019_2_CoolCode/models"
 
 type UserRepo interface {
 	GetUserByEmail(email string) (models.User, error)

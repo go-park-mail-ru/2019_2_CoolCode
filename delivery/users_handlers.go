@@ -3,9 +3,9 @@ package delivery
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/AntonPriyma/2019_2_CoolCode/models"
-	"github.com/AntonPriyma/2019_2_CoolCode/repository"
-	"github.com/AntonPriyma/2019_2_CoolCode/useCase"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"log"
@@ -32,19 +32,19 @@ func NewHandlers() *UserHandlers {
 
 
 func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
-	clientError, ok := err.(models.HTTPError)
+	httpError, ok := err.(models.HTTPError)
 	if !ok {
 		w.WriteHeader(500) // return 500 Internal Server Error.
 		return
 	}
 
-	body, err := clientError.ResponseBody() // Try to get response body of ClientError.
+	body, err := httpError.ResponseBody() // Try to get response body of ClientError.
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
 		w.WriteHeader(500)
 		return
 	}
-	status, headers := clientError.ResponseHeaders() // GetUserByEmail http status code and headers.
+	status, headers := httpError.ResponseHeaders() // GetUserByEmail http status code and headers.
 	for k, v := range headers {
 		w.Header().Set(k, v)
 	}

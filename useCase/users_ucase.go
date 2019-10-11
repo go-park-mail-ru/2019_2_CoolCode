@@ -1,8 +1,8 @@
 package useCase
 
 import (
-	"github.com/AntonPriyma/2019_2_CoolCode/models"
-	"github.com/AntonPriyma/2019_2_CoolCode/repository"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"log"
 	"net/http"
 	"strings"
