@@ -44,7 +44,12 @@ func (c ChatArrayRepository) PutChat(Chat *models.Chat) error {
 }
 
 func (c ChatArrayRepository) Contains(Chat models.Chat) error {
-	panic("implement me")
+	//for _, v := range c.chats {
+	//	if v. == v.Email {
+	//		return true
+	//	}
+	//}
+	return nil
 }
 
 
