@@ -19,15 +19,27 @@ func NewChatHandlers() ChatHandlers {
 }
 
 func (c *ChatHandlers)PostChat(w http.ResponseWriter, r *http.Request){
-	var newChat *models.Chat
+	//TODO: Check auth
+	var newChatModel models.CreateChatModel
 	decoder:=json.NewDecoder(r.Body)
-	err:=decoder.Decode(newChat)
-	err=c.Chats.PutChat(newChat)
+	err:=decoder.Decode(&newChatModel)
+	if err!=nil{
+
+	}
+	model:=models.Chat{
+		Name:          "MEM",
+	}
+	err=c.Chats.PutChat(&model)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (c *ChatHandlers)GetChatsByUser(w http.ResponseWriter, r *http.Request){
+	//TODO: Check auth
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 	chats,err:=c.Chats.GetChatByUserID(uint64(requestedID))
+	if err!=nil{
+
+	}
 	jsonChat,err:=json.Marshal(chats)
 	_,err=w.Write(jsonChat)
 }

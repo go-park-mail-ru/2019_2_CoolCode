@@ -52,4 +52,13 @@ func (c ChatArrayRepository) Contains(Chat models.Chat) error {
 	return nil
 }
 
+func (c ChatArrayRepository) GetChats() ([]models.Chat,error) {
+	c.mutex.Lock()
+	var chatsSlice []models.Chat
+	for _, chat := range c.chats {
+		chatsSlice = append(chatsSlice, *chat)
+	}
+	return chatsSlice,nil
+}
+
 

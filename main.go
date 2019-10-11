@@ -18,7 +18,8 @@ import (
 
 
 func main() {
-	api:=delivery.NewHandlers()
+	usersApi :=delivery.NewUsersHandlers()
+	chatsApi :=delivery.NewChatHandlers()
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com"}),
@@ -29,15 +30,18 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/users", api.SignUp).Methods("POST")
-	r.HandleFunc("/login", api.Login).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", api.EditProfile).Methods("PUT")
-	r.HandleFunc("/logout", api.Logout).Methods("DELETE")
-	r.HandleFunc("/photos", api.SavePhoto).Methods("POST")
-	r.HandleFunc("/photos/{id:[0-9]+}", api.GetPhoto).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}", api.GetUser).Methods("GET")
-	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", api.FindUsers).Methods("GET")
-	r.HandleFunc("/users", api.GetUserBySession).Methods("GET") //TODO:Добавить в API
+	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
+	r.HandleFunc("/login", usersApi.Login).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}", usersApi.EditProfile).Methods("PUT")
+	r.HandleFunc("/logout", usersApi.Logout).Methods("DELETE")
+	r.HandleFunc("/photos", usersApi.SavePhoto).Methods("POST")
+	r.HandleFunc("/photos/{id:[0-9]+}", usersApi.GetPhoto).Methods("GET")
+	r.HandleFunc("/users/{id:[0-9]+}", usersApi.GetUser).Methods("GET")
+	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", usersApi.FindUsers).Methods("GET")
+	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
+
+	r.HandleFunc("/chats",chatsApi.PostChat).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}/chats",chatsApi.GetChatsByUser).Methods("GET")
 	log.Println("Server started")
 
 	err := http.ListenAndServe(":8080", corsMiddleware(r))

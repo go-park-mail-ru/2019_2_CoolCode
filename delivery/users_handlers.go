@@ -22,7 +22,7 @@ type UserHandlers struct {
 	Sessions map[string]uint64
 }
 
-func NewHandlers() *UserHandlers {
+func NewUsersHandlers() *UserHandlers {
 	return &UserHandlers{
 		Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
 		Photos:  repository.NewPhotosArrayRepository("photos/"),

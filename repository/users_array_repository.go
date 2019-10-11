@@ -20,7 +20,7 @@ func NewArrayUserStore() UserRepo {
 		mutex: sync.Mutex{},
 		users: make(map[uint64]*models.User, 0),
 	}
-	reader, _ := os.Open("chats.txt")
+	reader, _ := os.Open("users.txt")
 
 	defer func() {
 		err := reader.Close()
@@ -52,13 +52,13 @@ func (userStore *ArrayUserStore) readUsers(users models.Users) {
 
 func (userStore *ArrayUserStore) saveUsers() {
 	usersSlice := userStore.GetUsers()
-	err := os.Remove("chats.txt")
+	err := os.Remove("users.txt")
 	if err != nil {
-		log.Println(`Removing 'chats.txt' error:`, err.Error())
+		log.Println(`Removing 'users.txt' error:`, err.Error())
 	}
-	file, err := os.Create("chats.txt")
+	file, err := os.Create("users.txt")
 	if err != nil {
-		log.Println(`Creating 'chats.txt' error:`, err.Error())
+		log.Println(`Creating 'users.txt' error:`, err.Error())
 		return
 	}
 	encoder := json.NewEncoder(file)
