@@ -111,7 +111,7 @@ func (handlers *UserHandlers) GetPhoto(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	reader := bufio.NewReader(&file)
+	reader := bufio.NewReader(file)
 	bytes := make([]byte, 10<<20)
 	_, err = reader.Read(bytes)
 

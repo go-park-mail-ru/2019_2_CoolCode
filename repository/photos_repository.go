@@ -7,5 +7,5 @@ import (
 
 type PhotoRepository interface {
 	SavePhoto(file multipart.File, id string) (returnErr error)
-	GetPhoto(id int) (os.File, error)
+	GetPhoto(id int) (*os.File, error)
 }

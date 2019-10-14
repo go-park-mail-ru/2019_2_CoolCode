@@ -58,15 +58,15 @@ func (p *PhotosArrayRepository) SavePhoto(file multipart.File, id string) (retur
 	return nil
 }
 
-func (p *PhotosArrayRepository) GetPhoto(id int) (os.File, error) {
+func (p *PhotosArrayRepository) GetPhoto(id int) (*os.File, error) {
 
 	fileName := strconv.Itoa(id)
 	file, err := os.Open(p.dirPath + fileName + ".png")
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
-		return *file, err
+		return file, err
 	}
-	return *file, nil
+	return file, nil
 }
 
 func NewPhotosArrayRepository(path string) PhotoRepository {
