@@ -6,14 +6,13 @@ import (
 	"time"
 )
 
-func AdminAuthMiddleware(next http.Handler) http.Handler {
+func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("adminAuthMiddleware", r.URL.Path)
 		_, err := r.Cookie("session_id")
-		// учебный пример! это не проверка авторизации!
 		if err != nil {
 			fmt.Println("no auth at", r.URL.Path)
-			http.Redirect(w, r, "/", http.StatusFound)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -42,4 +41,3 @@ func PanicMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-

@@ -1,5 +1,5 @@
 package models
 
 type Users struct {
-	Users []User `json:"users"`
+	Users []*User `json:"users"`
 }

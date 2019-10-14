@@ -41,12 +41,9 @@ func NewArrayUserStore() UserRepo {
 }
 
 func (userStore *ArrayUserStore) readUsers(users models.Users) {
+	userStore.nextID= uint64(len(users.Users) + 1)
 	for _, user := range users.Users {
-		err := userStore.PutUser(&user)
-		if err != nil {
-			log.Println("User adding error:", err.Error())
-			return
-		}
+		userStore.users[user.ID] = user
 	}
 }
 
@@ -82,7 +79,7 @@ func (userStore *ArrayUserStore) Contains(user models.User) bool {
 func (userStore *ArrayUserStore) GetUsers() models.Users {
 	var usersSlice models.Users
 	for _, user := range userStore.users {
-		usersSlice.Users = append(usersSlice.Users, *user)
+		usersSlice.Users = append(usersSlice.Users, user)
 	}
 	return usersSlice
 }
