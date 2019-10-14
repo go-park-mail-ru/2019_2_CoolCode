@@ -19,14 +19,14 @@ import (
 type UserHandlers struct {
 	Users    useCase.UsersUseCase
 	Photos repository.PhotoRepository
-	Sessions map[string]uint64
+	Sessions repository.SessionRepository
 }
 
-func NewUsersHandlers() *UserHandlers {
+func NewUsersHandlers(users useCase.UsersUseCase,sessions repository.SessionRepository) *UserHandlers {
 	return &UserHandlers{
-		Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
+		Users:    users,
 		Photos:  repository.NewPhotosArrayRepository("photos/"),
-		Sessions: make(map[string]uint64, 0),
+		Sessions: sessions,
 	}
 }
 
@@ -283,7 +283,10 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		token := uuid.New()
 		expiration := time.Now().Add(365 * 24 * time.Hour)
 		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
-		handlers.Sessions[cookie.Value] = user.ID
+		err:=handlers.Sessions.Put(cookie.Value,user.ID)
+		if err!=nil{
+			panic(err)
+		}
 		user.Password = ""
 		body, err := json.Marshal(user)
 		if err != nil {
@@ -316,27 +319,13 @@ func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	delete(handlers.Sessions, session.Value)
-	session.Expires = time.Now().AddDate(0, 0, -1)
-	http.SetCookie(w, session)
-}
-
-func (handlers *UserHandlers) logout(w http.ResponseWriter, r *http.Request) {
-	log.Println("New request: ", r.Body)
-
-	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
-		log.Println("Not authorized")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	delete(handlers.Sessions, session.Value)
+	handlers.Sessions.Remove(session.Value)
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
 }
 
 func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
-	id := handlers.Sessions[cookie.Value]
+	id ,err:= handlers.Sessions.GetID(cookie.Value)
 	user, err := handlers.Users.GetUserByID(id)
 	if err == nil {
 		return user, nil

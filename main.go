@@ -2,6 +2,9 @@ package main
 
 import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/delivery"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/middleware"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"log"
@@ -18,8 +21,11 @@ import (
 
 
 func main() {
-	usersApi :=delivery.NewUsersHandlers()
-	chatsApi :=delivery.NewChatHandlers()
+	userUseCase:=useCase.NewUserUseCase(repository.NewArrayUserStore())
+	session:=repository.NewSessionArrayRepository()
+	usersApi :=delivery.NewUsersHandlers(userUseCase,session)
+	chatsApi :=delivery.NewChatHandlers(userUseCase,session)
+
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -29,8 +35,8 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-
-	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
+	handler:=middleware.PanicMiddleware(middleware.LogMiddleware(r))
+	r.HandleFunc("/users",usersApi.SignUp).Methods("POST")
 	r.HandleFunc("/login", usersApi.Login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", usersApi.EditProfile).Methods("PUT")
 	r.HandleFunc("/logout", usersApi.Logout).Methods("DELETE")
@@ -44,7 +50,7 @@ func main() {
 	r.HandleFunc("/users/{id:[0-9]+}/chats",chatsApi.GetChatsByUser).Methods("GET")
 	log.Println("Server started")
 
-	err := http.ListenAndServe(":8080", corsMiddleware(r))
+	err := http.ListenAndServe(":8080", corsMiddleware(handler))
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
 		return

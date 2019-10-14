@@ -11,37 +11,62 @@ import (
 )
 
 type ChatHandlers struct {
-	Chats useCase.ChatsUseCase
+	Chats    useCase.ChatsUseCase
+	Users    useCase.UsersUseCase
+	Sessions repository.SessionRepository
 }
 
-func NewChatHandlers() ChatHandlers {
-	return ChatHandlers{Chats: useCase.NewChatsUseCase(repository.NewChatArrayRepository())}
+func NewChatHandlers(users useCase.UsersUseCase,sessions repository.SessionRepository) ChatHandlers {
+	return ChatHandlers{
+		Chats:    useCase.NewChatsUseCase(repository.NewChatArrayRepository()),
+		Users:    users,
+		Sessions: sessions,
+	}
 }
 
-func (c *ChatHandlers)PostChat(w http.ResponseWriter, r *http.Request){
-	//TODO: Check auth
+func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		panic(models.NewClientError(err, http.StatusUnauthorized, "Not auth:("))
+	}
+	user, err := c.parseCookie(cookie)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	var newChatModel models.CreateChatModel
-	decoder:=json.NewDecoder(r.Body)
-	err:=decoder.Decode(&newChatModel)
-	if err!=nil{
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&newChatModel)
+	if err != nil {
+		panic(err)
+	}
+	userTo, err := c.Users.GetUserByID(newChatModel.UserID)
+	if err != nil {
+		panic(err)
+	}
 
-	}
-	model:=models.Chat{
-		Name:          "MEM",
-	}
-	err=c.Chats.PutChat(&model)
+	model := models.NewChatModel(userTo.Username, user.ID, userTo.ID)
+	err = c.Chats.PutChat(model)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (c *ChatHandlers)GetChatsByUser(w http.ResponseWriter, r *http.Request){
+func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	//TODO: Check auth
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	chats,err:=c.Chats.GetChatByUserID(uint64(requestedID))
-	if err!=nil{
+	chats, err := c.Chats.GetChatByUserID(uint64(requestedID))
+	if err != nil {
 
 	}
-	jsonChat,err:=json.Marshal(chats)
-	_,err=w.Write(jsonChat)
+	jsonChat, err := json.Marshal(chats)
+	_, err = w.Write(jsonChat)
 }
 
-
+func (c ChatHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
+	id, err := c.Sessions.GetID(cookie.Value)
+	user, err := c.Users.GetUserByID(id)
+	if err == nil {
+		return user, nil
+	} else {
+		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
+	}
+}
