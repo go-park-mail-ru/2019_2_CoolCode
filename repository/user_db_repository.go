@@ -37,7 +37,18 @@ func (userStore *DBUserStore) PutUser(newUser *models.User) error {
 }
 
 func (userStore *DBUserStore) Replace(ID uint64, newUser *models.User) error {
-	panic("implement me")
+
+	result, _ := userStore.DB.Exec(
+		"UPDATE users SET username = $1, email = $2, name = $3, password = $4, status = $5, name = $6 WHERE id = $7",
+		newUser.Username, newUser.Email, newUser.Name, newUser.Password, newUser.Status, newUser.Name, ID,
+	)
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	fmt.Println("Update - RowsAffected", affected)
+	return nil
 }
 
 func (userStore *DBUserStore) Contains(user models.User) bool {
