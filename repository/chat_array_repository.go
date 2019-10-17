@@ -12,7 +12,43 @@ type ChatArrayRepository struct {
 	nextID uint64
 }
 
-func NewChatArrayRepository() ChatsRepository{
+func (c ChatArrayRepository) GetWorkspaceByID(userID uint64) (models.Workspace, error) {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) GetWorkspaces() ([]models.Workspace, error) {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) PutWorkspace(workspace *models.Workspace) error {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) PutChannel(userID uint64, channel *models.Channel) error {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) UpdateWorkspace(workspaceID uint64, workspace *models.Workspace) error {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) UpdateChannel(channelID uint64, channel *models.Channel) error {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) RemoveWorkspace(workspaceID uint64) error {
+	panic("implement me")
+}
+
+func (c ChatArrayRepository) RemoveChannel(channelID uint64) error {
+	panic("implement me")
+}
+
+func NewChatArrayRepository() ChatsRepository {
 	return ChatArrayRepository{
 		chats:  make(map[uint64]*models.Chat, 0),
 		mutex:  sync.Mutex{},
@@ -34,7 +70,7 @@ func (c ChatArrayRepository) PutChat(Chat *models.Chat) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if Chat.ID==0 {
+	if Chat.ID == 0 {
 		c.nextID++
 		Chat.ID = c.nextID
 	}
@@ -52,13 +88,11 @@ func (c ChatArrayRepository) Contains(Chat models.Chat) error {
 	return nil
 }
 
-func (c ChatArrayRepository) GetChats() ([]models.Chat,error) {
+func (c ChatArrayRepository) GetChats() ([]models.Chat, error) {
 	c.mutex.Lock()
 	var chatsSlice []models.Chat
 	for _, chat := range c.chats {
 		chatsSlice = append(chatsSlice, *chat)
 	}
-	return chatsSlice,nil
+	return chatsSlice, nil
 }
-
-

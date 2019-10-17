@@ -265,7 +265,7 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
 		err := handlers.Sessions.Put(cookie.Value, user.ID)
 		if err != nil {
-			panic(err)
+			//TODO:error
 		}
 		user.Password = ""
 		body, err := json.Marshal(user)
@@ -338,8 +338,11 @@ func (handlers UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Req
 
 func (handlers UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
-	cookie, _ := r.Cookie("session_id")
-
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	user, err := handlers.parseCookie(cookie)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)

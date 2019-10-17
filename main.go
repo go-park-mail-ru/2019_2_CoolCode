@@ -23,6 +23,7 @@ func main() {
 	session := repository.NewSessionArrayRepository()
 	usersApi := delivery.NewUsersHandlers(userUseCase, session)
 	chatsApi := delivery.NewChatHandlers(userUseCase, session)
+	notificationApi := delivery.NewNotificationHandlers(userUseCase, session, chatsApi.Chats)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -43,8 +44,10 @@ func main() {
 	r.Handle("/users/{name:[((a-z)|(A-Z))0-9_-]+}", middleware.AuthMiddleware(usersApi.FindUsers)).Methods("GET")
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
-	r.Handle("/chats", middleware.AuthMiddleware(chatsApi.PostChat)).Methods("POST")
-	r.Handle("/users/{id:[0-9]+}/chats", middleware.AuthMiddleware(chatsApi.GetChatsByUser)).Methods("GET")
+	r.HandleFunc("/chats", chatsApi.PostChat).Methods("POST")
+	r.HandleFunc("/chats/{id:[0-9]+}", chatsApi.PostChat).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}/chats", chatsApi.GetChatsByUser).Methods("GET")
+	r.HandleFunc("/chats/{id:[0-9]+}/notifications", notificationApi.HandleNewWSConnection)
 	log.Println("Server started")
 
 	err := http.ListenAndServe(":8080", corsMiddleware(handler))

@@ -36,11 +36,11 @@ func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&newChatModel)
 	if err != nil {
-		panic(err)
+		//TODO: send error
 	}
 	userTo, err := c.Users.GetUserByID(newChatModel.UserID)
 	if err != nil {
-		panic(err)
+		//TODO: send error
 	}
 
 	model := models.NewChatModel(userTo.Username, user.ID, userTo.ID)
@@ -50,7 +50,7 @@ func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
 
 func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	chats, err := c.Chats.GetChatByUserID(uint64(requestedID))
+	chats, err := c.Chats.GetChatsByUserID(uint64(requestedID))
 	if err != nil {
 
 	}
