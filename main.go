@@ -18,14 +18,12 @@ import (
 //405 - неверный метод
 //500 - фатальная ошибка на сервере
 
-
-
 func main() {
-	userUseCase:=useCase.NewUserUseCase(repository.NewArrayUserStore())
-	session:=repository.NewSessionArrayRepository()
-	usersApi :=delivery.NewUsersHandlers(userUseCase,session)
-	chatsApi :=delivery.NewChatHandlers(userUseCase,session)
-
+	userUseCase := useCase.NewUserUseCase(repository.NewArrayUserStore())
+	session := repository.NewSessionArrayRepository()
+	usersApi := delivery.NewUsersHandlers(userUseCase, session)
+	chatsApi := delivery.NewChatHandlers(userUseCase, session)
+	notificationApi := delivery.NewNotificationHandlers(userUseCase, session, chatsApi.Chats)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -35,8 +33,8 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-	handler:=middleware.PanicMiddleware(middleware.LogMiddleware(r))
-	r.HandleFunc("/users",usersApi.SignUp).Methods("POST")
+	handler := middleware.PanicMiddleware(middleware.LogMiddleware(r))
+	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
 	r.HandleFunc("/login", usersApi.Login).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}", usersApi.EditProfile).Methods("PUT")
 	r.HandleFunc("/logout", usersApi.Logout).Methods("DELETE")
@@ -46,8 +44,10 @@ func main() {
 	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", usersApi.FindUsers).Methods("GET")
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
-	r.HandleFunc("/chats",chatsApi.PostChat).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}/chats",chatsApi.GetChatsByUser).Methods("GET")
+	r.HandleFunc("/chats", chatsApi.PostChat).Methods("POST")
+	r.HandleFunc("/chats/{id:[0-9]+}", chatsApi.PostChat).Methods("POST")
+	r.HandleFunc("/users/{id:[0-9]+}/chats", chatsApi.GetChatsByUser).Methods("GET")
+	r.HandleFunc("/chats/{id:[0-9]+}/notifications", notificationApi.HandleNewWSConnection)
 	log.Println("Server started")
 
 	err := http.ListenAndServe(":8080", corsMiddleware(handler))
@@ -59,4 +59,3 @@ func main() {
 
 //TODO: middleware для ошибок
 //TODO: ECHO ???
-

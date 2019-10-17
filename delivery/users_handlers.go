@@ -14,22 +14,19 @@ import (
 	"time"
 )
 
-
-
 type UserHandlers struct {
 	Users    useCase.UsersUseCase
-	Photos repository.PhotoRepository
+	Photos   repository.PhotoRepository
 	Sessions repository.SessionRepository
 }
 
-func NewUsersHandlers(users useCase.UsersUseCase,sessions repository.SessionRepository) *UserHandlers {
+func NewUsersHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository) *UserHandlers {
 	return &UserHandlers{
 		Users:    users,
-		Photos:  repository.NewPhotosArrayRepository("photos/"),
+		Photos:   repository.NewPhotosArrayRepository("photos/"),
 		Sessions: sessions,
 	}
 }
-
 
 func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
 	httpError, ok := err.(models.HTTPError)
@@ -275,17 +272,16 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		handlers.sendError(err, w)
 	}
 
-
-	user,err := handlers.Users.Login(loginUser)
-	if err != nil{
-		handlers.sendError(err,w)
-	}else {
+	user, err := handlers.Users.Login(loginUser)
+	if err != nil {
+		handlers.sendError(err, w)
+	} else {
 		token := uuid.New()
 		expiration := time.Now().Add(365 * 24 * time.Hour)
 		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
-		err:=handlers.Sessions.Put(cookie.Value,user.ID)
-		if err!=nil{
-			panic(err)
+		err := handlers.Sessions.Put(cookie.Value, user.ID)
+		if err != nil {
+			//TODO:error
 		}
 		user.Password = ""
 		body, err := json.Marshal(user)
@@ -306,8 +302,6 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
 }
 
 func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
@@ -325,7 +319,7 @@ func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
-	id ,err:= handlers.Sessions.GetID(cookie.Value)
+	id, err := handlers.Sessions.GetID(cookie.Value)
 	user, err := handlers.Users.GetUserByID(id)
 	if err == nil {
 		return user, nil
@@ -364,28 +358,26 @@ func (handlers UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Req
 }
 
 func (handlers UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
-	name:=mux.Vars(r)["name"]
+	name := mux.Vars(r)["name"]
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	user,err:=handlers.parseCookie(cookie)
+	user, err := handlers.parseCookie(cookie)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if name==""{
+	if name == "" {
 		name = user.Username
 	}
 
-
-	users,err:=handlers.Users.FindUsers(name)
-	if err!=nil{
-		handlers.sendError(err,w)
+	users, err := handlers.Users.FindUsers(name)
+	if err != nil {
+		handlers.sendError(err, w)
 	}
-	response,err:=json.Marshal(users)
+	response, err := json.Marshal(users)
 	w.Write(response)
 
 }
-
