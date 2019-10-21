@@ -58,8 +58,8 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 		log.Println("User contains", newUser)
 		return models.NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	} else {
-		if newUser.Name == "" {
-			newUser.Name = "John Doe"
+		if newUser.Name.String == "" {
+			newUser.Name.String = "John Doe"
 		}
 		if newUser.Username == "" {
 			newUser.Username = "Stereo"

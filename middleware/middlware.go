@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func AuthMiddleware(next http.Handler) http.Handler {
+func AuthMiddleware(next func(w http.ResponseWriter, r *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("adminAuthMiddleware", r.URL.Path)
 		_, err := r.Cookie("session_id")
@@ -15,7 +15,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next(w, r)
 	})
 }
 

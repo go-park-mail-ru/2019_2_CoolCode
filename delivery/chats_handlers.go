@@ -16,7 +16,7 @@ type ChatHandlers struct {
 	Sessions repository.SessionRepository
 }
 
-func NewChatHandlers(users useCase.UsersUseCase,sessions repository.SessionRepository) ChatHandlers {
+func NewChatHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository) ChatHandlers {
 	return ChatHandlers{
 		Chats:    useCase.NewChatsUseCase(repository.NewChatArrayRepository()),
 		Users:    users,
@@ -25,10 +25,8 @@ func NewChatHandlers(users useCase.UsersUseCase,sessions repository.SessionRepos
 }
 
 func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		panic(models.NewClientError(err, http.StatusUnauthorized, "Not auth:("))
-	}
+	cookie, _ := r.Cookie("session_id")
+
 	user, err := c.parseCookie(cookie)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -51,7 +49,6 @@ func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
-	//TODO: Check auth
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 	chats, err := c.Chats.GetChatByUserID(uint64(requestedID))
 	if err != nil {

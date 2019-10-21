@@ -18,14 +18,11 @@ import (
 //405 - неверный метод
 //500 - фатальная ошибка на сервере
 
-
-
 func main() {
-	userUseCase:=useCase.NewUserUseCase(repository.NewArrayUserStore())
-	session:=repository.NewSessionArrayRepository()
-	usersApi :=delivery.NewUsersHandlers(userUseCase,session)
-	chatsApi :=delivery.NewChatHandlers(userUseCase,session)
-
+	userUseCase := useCase.NewUserUseCase(repository.NewArrayUserStore())
+	session := repository.NewSessionArrayRepository()
+	usersApi := delivery.NewUsersHandlers(userUseCase, session)
+	chatsApi := delivery.NewChatHandlers(userUseCase, session)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -35,19 +32,19 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-	handler:=middleware.PanicMiddleware(middleware.LogMiddleware(r))
-	r.HandleFunc("/users",usersApi.SignUp).Methods("POST")
+	handler := middleware.PanicMiddleware(middleware.LogMiddleware(r))
+	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
 	r.HandleFunc("/login", usersApi.Login).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}", usersApi.EditProfile).Methods("PUT")
-	r.HandleFunc("/logout", usersApi.Logout).Methods("DELETE")
-	r.HandleFunc("/photos", usersApi.SavePhoto).Methods("POST")
-	r.HandleFunc("/photos/{id:[0-9]+}", usersApi.GetPhoto).Methods("GET")
-	r.HandleFunc("/users/{id:[0-9]+}", usersApi.GetUser).Methods("GET")
-	r.HandleFunc("/users/{name:[((a-z)|(A-Z))0-9_-]+}", usersApi.FindUsers).Methods("GET")
+	r.Handle("/users/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.EditProfile)).Methods("PUT")
+	r.Handle("/logout", middleware.AuthMiddleware(usersApi.Logout)).Methods("DELETE")
+	r.Handle("/photos", middleware.AuthMiddleware(usersApi.SavePhoto)).Methods("POST")
+	r.Handle("/photos/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.GetPhoto)).Methods("GET")
+	r.Handle("/users/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.GetUser)).Methods("GET")
+	r.Handle("/users/{name:[((a-z)|(A-Z))0-9_-]+}", middleware.AuthMiddleware(usersApi.FindUsers)).Methods("GET")
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
-	r.HandleFunc("/chats",chatsApi.PostChat).Methods("POST")
-	r.HandleFunc("/users/{id:[0-9]+}/chats",chatsApi.GetChatsByUser).Methods("GET")
+	r.Handle("/chats", middleware.AuthMiddleware(chatsApi.PostChat)).Methods("POST")
+	r.Handle("/users/{id:[0-9]+}/chats", middleware.AuthMiddleware(chatsApi.GetChatsByUser)).Methods("GET")
 	log.Println("Server started")
 
 	err := http.ListenAndServe(":8080", corsMiddleware(handler))
@@ -59,4 +56,3 @@ func main() {
 
 //TODO: middleware для ошибок
 //TODO: ECHO ???
-
