@@ -1,0 +1,6 @@
+CREATE TABLE "chats"
+(
+ id BIGSERIAL NOT NULL
+            PRIMARY KEY,
+
+)
