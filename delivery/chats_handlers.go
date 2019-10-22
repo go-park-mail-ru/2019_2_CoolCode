@@ -16,8 +16,8 @@ type ChatHandlers struct {
 	Sessions repository.SessionRepository
 }
 
-func NewChatHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository) ChatHandlers {
-	return ChatHandlers{
+func NewChatHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository) *ChatHandlers {
+	return &ChatHandlers{
 		Chats:    useCase.NewChatsUseCase(repository.NewChatArrayRepository()),
 		Users:    users,
 		Sessions: sessions,
@@ -58,7 +58,7 @@ func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(jsonChat)
 }
 
-func (c ChatHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
+func (c *ChatHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
 	id, err := c.Sessions.GetID(cookie.Value)
 	user, err := c.Users.GetUserByID(id)
 	if err == nil {

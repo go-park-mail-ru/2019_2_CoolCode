@@ -90,6 +90,7 @@ func (c ChatArrayRepository) Contains(Chat models.Chat) error {
 
 func (c *ChatArrayRepository) GetChats() ([]models.Chat, error) {
 	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	var chatsSlice []models.Chat
 	for _, chat := range c.chats {
 		chatsSlice = append(chatsSlice, *chat)
