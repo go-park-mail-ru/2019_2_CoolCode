@@ -69,11 +69,21 @@ func main() {
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
 	r.HandleFunc("/chats", chatsApi.PostChat).Methods("POST")
-	r.HandleFunc("/chats/{id:[0-9]+}", chatsApi.PostChat).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}/chats", chatsApi.GetChatsByUser).Methods("GET")
 	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChatById)).Methods("GET")
+	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChat)).Methods("DELETE")
+
 	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChannelById)).Methods("GET")
+	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditChannel)).Methods("PUT")
+	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChannel)).Methods("DELETE")
+	//TODO: r.Handle("/channels/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromChannel)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}/channels", middleware.AuthMiddleware(chatsApi.PostChannel)).Methods("POST")
+
 	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetWorkspaceById)).Methods("GET")
+	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditWorkspace)).Methods("PUT")
+	//TODO: r.Handle("/workspaces/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces", middleware.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
 	r.HandleFunc("/chats/{id:[0-9]+}/notifications", notificationApi.HandleNewWSConnection)
 	log.Println("Server started")
 

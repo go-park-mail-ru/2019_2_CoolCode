@@ -349,6 +349,11 @@
 ### 3.4 Подписаться на уведомления чата
  Websocket запрос chats/{id}/notifications
  
+### 3.5 Удалить чат
+ Запрос `/chats/{id}` `DELETE`
+ 
+ Ответ: код ошибки
+ 
 # 4 Workspaces
 
 ### 4.1 Создание workspace 
@@ -369,11 +374,7 @@
 
 ```json
 {
-  "id": "int",
-  "name": "string",
-  "members": ["int"],
-  "admins": ["int"],
-  "creator": "int"
+  "id": "int"
 }
 ```
 
@@ -459,11 +460,6 @@
 ```json
 {
   "id": "int",
-  "name": "string",
-  "totalMsgCount": "int", 
-  "members": ["int"],
-  "admins": ["int"],
-  "creator": "int"
 }
 ```
 

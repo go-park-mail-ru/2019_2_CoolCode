@@ -104,11 +104,11 @@ func (c *ChatsDBRepository) GetWorkspaces(userID uint64) ([]models.Workspace, er
 	return result, nil
 }
 
-func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) error {
+func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) (uint64, error) {
 	var workspaceID uint64
 	tx, err := c.db.Begin()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not open PutWorkspace transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutWorkspace transaction "+err.Error())
 	}
 
 	defer tx.Rollback()
@@ -129,20 +129,20 @@ func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) error {
 	sqlStr = strings.TrimSuffix(sqlStr, ",")
 	_, err = c.db.Exec(sqlStr, vals...)
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Put workspace error "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Put workspace error "+err.Error())
 	}
 	err = tx.Commit()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutWorkspace transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutWorkspace transaction "+err.Error())
 	}
-	return nil
+	return workspaceID, nil
 }
 
-func (c *ChatsDBRepository) PutChannel(channel *models.Channel) error {
+func (c *ChatsDBRepository) PutChannel(channel *models.Channel) (uint64, error) {
 	var channelID uint64
 	tx, err := c.db.Begin()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChannel transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChannel transaction "+err.Error())
 	}
 
 	defer tx.Rollback()
@@ -166,13 +166,13 @@ func (c *ChatsDBRepository) PutChannel(channel *models.Channel) error {
 	_, err = c.db.Exec(sqlStr, vals...)
 
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Put channel error "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Put channel error "+err.Error())
 	}
 	err = tx.Commit()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
 	}
-	return nil
+	return channelID, nil
 }
 
 func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
@@ -378,11 +378,11 @@ func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	return result, nil
 }
 
-func (c *ChatsDBRepository) PutChat(Chat *models.Chat) error {
-	var chatID int
+func (c *ChatsDBRepository) PutChat(Chat *models.Chat) (uint64, error) {
+	var chatID uint64
 	tx, err := c.db.Begin()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChat transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChat transaction "+err.Error())
 	}
 
 	defer tx.Rollback()
@@ -402,13 +402,13 @@ func (c *ChatsDBRepository) PutChat(Chat *models.Chat) error {
 	sqlStr = strings.TrimSuffix(sqlStr, ",")
 	_, err = c.db.Exec(sqlStr, vals...)
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Put chat error "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Put chat error "+err.Error())
 	}
 	err = tx.Commit()
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
 	}
-	return nil
+	return chatID, nil
 
 }
 

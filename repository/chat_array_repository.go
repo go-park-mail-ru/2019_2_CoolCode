@@ -20,11 +20,11 @@ func (c ChatArrayRepository) GetWorkspaces(userID uint64) ([]models.Workspace, e
 	panic("implement me")
 }
 
-func (c ChatArrayRepository) PutWorkspace(workspace *models.Workspace) error {
+func (c ChatArrayRepository) PutWorkspace(workspace *models.Workspace) (uint64, error) {
 	panic("implement me")
 }
 
-func (c ChatArrayRepository) PutChannel(channel *models.Channel) error {
+func (c ChatArrayRepository) PutChannel(channel *models.Channel) (uint64, error) {
 	panic("implement me")
 }
 
@@ -70,7 +70,7 @@ func (c ChatArrayRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	return resultChat, errors.New("user not contains")
 }
 
-func (c ChatArrayRepository) PutChat(Chat *models.Chat) error {
+func (c ChatArrayRepository) PutChat(Chat *models.Chat) (uint64, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -80,7 +80,7 @@ func (c ChatArrayRepository) PutChat(Chat *models.Chat) error {
 	}
 	c.chats[Chat.ID] = Chat
 
-	return nil
+	return Chat.ID, nil
 }
 
 func (c ChatArrayRepository) Contains(Chat models.Chat) error {
