@@ -311,7 +311,23 @@
 ```
 //TODO: CHAT JSON
 
-###3.2 Получение чатов пользователя
+### 3.2 Получение чата
+Запрос /chats/{id} типа GET
+
+Тело ответа:
+```json
+{
+  "id":"int",
+  "name": "string",
+  "totalMsgCount": "int",
+  "members": ["int"]
+  
+}
+```
+
+
+
+###3.3 Получение чатов пользователя
 Запрос /users/{id}/chats типа GET
 
 Тело ответа:
@@ -330,7 +346,7 @@
 }
 ```
 
-### 3.3 Подписаться на уведомления чата
+### 3.4 Подписаться на уведомления чата
  Websocket запрос chats/{id}/notifications
  
 # 4 Workspaces
@@ -361,33 +377,55 @@
 }
 ```
 
-### 4.2 Редактирование workspace
+### 4.2 Получение workspace
+Запрос /workspace/{id} типа GET
+
+Тело ответа:
+```json
+{
+  "id": "int",
+  "name": "string",
+  "channels":  [{
+      "id": "int",
+      "name": "string",
+      "totalMsgCount": "int", 
+      "members": ["int"],
+      "admins": ["int"],
+      "creator": "int"
+  }], 
+  "members": ["int"],
+  "admins": ["int"],
+  "creator": "int"
+}
+```
+
+### 4.3 Редактирование workspace
 Запрос типа `PUT` `workspaces/{id}`. Доступ имеют только админы workspace
 
-```json
+`````json
 {
   "id": "int",
   "name": "string",
   "members": ["int"],
   "admins": ["int"]
 }
-```
+`````
 
-### 4.3 Выход из workspace
+### 4.4 Выход из workspace
 
 Запрос `DELETE` `/workspaces/{id}/members`
 
-```json
+`````json
 {
   "id": "int"
 }
-```
+`````
 
 | Ключ          | Значение                                                                                                                                                                                                                                                                               |
 | ------------- | ----------------------------------------- |
 | `id`       | id workspace |
 
-### 4.4 Удаление workspace
+### 4.5 Удаление workspace
 Доступ к запросу имеет только создатель workspace
 Запрос `DELETE` `/workspaces/{id}`
 
@@ -441,7 +479,22 @@
 }
 ```
 
-### 4.3 Выход из канала
+### 5.3 Получение канала
+Запрос /channels/{id} типа GET
+
+Тело ответа:
+```json
+{
+  "id": "int",
+  "name": "string",
+  "totalMsgCount": "int", 
+  "members": ["int"],
+  "admins": ["int"],
+  "creator": "int"
+}
+```
+
+### 5.4 Выход из канала
 
 Запрос `DELETE` `/channels/{id}/members`
 
@@ -455,7 +508,7 @@
 | ------------- | ----------------------------------------- |
 | `id`       | id канала |
 
-### 4.4 Удаление канала
+### 5.5 Удаление канала
 Доступ к запросу имеет только создатель канала
 Запрос `DELETE` `/channels/{id}`
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 )
@@ -16,7 +17,7 @@ type ArrayUserStore struct {
 }
 
 func NewArrayUserStore() UserRepo {
-	store:=&ArrayUserStore{
+	store := &ArrayUserStore{
 		mutex: sync.Mutex{},
 		users: make(map[uint64]*models.User, 0),
 	}
@@ -41,7 +42,7 @@ func NewArrayUserStore() UserRepo {
 }
 
 func (userStore *ArrayUserStore) readUsers(users models.Users) {
-	userStore.nextID= uint64(len(users.Users) + 1)
+	userStore.nextID = uint64(len(users.Users))
 	for _, user := range users.Users {
 		userStore.users[user.ID] = user
 	}
@@ -105,7 +106,7 @@ func (userStore ArrayUserStore) GetUserByID(ID uint64) (models.User, error) {
 		return *user, nil
 	}
 	userStore.mutex.Unlock()
-	return resultUser, errors.New("user not contains")
+	return resultUser, models.NewClientError(nil, http.StatusBadRequest, "Bad request: user not contains:(")
 }
 
 func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
@@ -113,7 +114,7 @@ func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
 
-	if newUser.ID==0 {
+	if newUser.ID == 0 {
 		userStore.nextID++
 		newUser.ID = userStore.nextID
 	}
@@ -122,7 +123,7 @@ func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
 	return nil
 }
 
-func (userStore *ArrayUserStore) Replace(ID uint64,newUser *models.User) error {
+func (userStore *ArrayUserStore) Replace(ID uint64, newUser *models.User) error {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
