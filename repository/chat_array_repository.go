@@ -49,7 +49,7 @@ func (c ChatArrayRepository) RemoveChannel(channelID uint64) error {
 }
 
 func NewChatArrayRepository() ChatsRepository {
-	return ChatArrayRepository{
+	return &ChatArrayRepository{
 		chats:  make(map[uint64]*models.Chat, 0),
 		mutex:  sync.Mutex{},
 		nextID: 0,
@@ -66,7 +66,7 @@ func (c ChatArrayRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	return resultChat, errors.New("user not contains")
 }
 
-func (c ChatArrayRepository) PutChat(Chat *models.Chat) error {
+func (c *ChatArrayRepository) PutChat(Chat *models.Chat) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -88,7 +88,7 @@ func (c ChatArrayRepository) Contains(Chat models.Chat) error {
 	return nil
 }
 
-func (c ChatArrayRepository) GetChats() ([]models.Chat, error) {
+func (c *ChatArrayRepository) GetChats() ([]models.Chat, error) {
 	c.mutex.Lock()
 	var chatsSlice []models.Chat
 	for _, chat := range c.chats {
