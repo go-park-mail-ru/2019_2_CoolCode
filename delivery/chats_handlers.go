@@ -54,9 +54,8 @@ func (handlers *ChatHandlers) sendError(err error, w http.ResponseWriter) {
 }
 
 func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
 
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -99,7 +98,12 @@ func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 
 func (c *ChatHandlers) GetChatById(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	chat, err := c.Chats.GetChatByID(uint64(requestedID))
+	user, err := c.parseCookie(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	chat, err := c.Chats.GetChatByID(user.ID, uint64(requestedID))
 	if err != nil {
 		c.sendError(err, w)
 	}
@@ -108,9 +112,9 @@ func (c *ChatHandlers) GetChatById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) RemoveChat(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
+
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -122,10 +126,9 @@ func (c *ChatHandlers) RemoveChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) PostChannel(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -156,7 +159,12 @@ func (c *ChatHandlers) PostChannel(w http.ResponseWriter, r *http.Request) {
 
 func (c *ChatHandlers) GetChannelById(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	channel, err := c.Chats.GetChannelByID(uint64(requestedID))
+	user, err := c.parseCookie(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	channel, err := c.Chats.GetChannelByID(user.ID, uint64(requestedID))
 	if err != nil {
 		c.sendError(err, w)
 	}
@@ -165,9 +173,8 @@ func (c *ChatHandlers) GetChannelById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) EditChannel(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
 
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -189,9 +196,8 @@ func (c *ChatHandlers) EditChannel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) RemoveChannel(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -203,9 +209,7 @@ func (c *ChatHandlers) RemoveChannel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) PostWorkspace(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
-
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -239,7 +243,12 @@ func (c *ChatHandlers) PostWorkspace(w http.ResponseWriter, r *http.Request) {
 
 func (c *ChatHandlers) GetWorkspaceById(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	workspace, err := c.Chats.GetWorkspaceByID(uint64(requestedID))
+	user, err := c.parseCookie(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	workspace, err := c.Chats.GetWorkspaceByID(user.ID, uint64(requestedID))
 	if err != nil {
 		c.sendError(err, w)
 	}
@@ -248,9 +257,7 @@ func (c *ChatHandlers) GetWorkspaceById(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *ChatHandlers) EditWorkspace(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
-
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -272,9 +279,8 @@ func (c *ChatHandlers) EditWorkspace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) RemoveWorkspace(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
-	user, err := c.parseCookie(cookie)
+	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -285,7 +291,8 @@ func (c *ChatHandlers) RemoveWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c ChatHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
+func (c ChatHandlers) parseCookie(r *http.Request) (models.User, error) {
+	cookie, _ := r.Cookie("session_id")
 	id, err := c.Sessions.GetID(cookie.Value)
 	user, err := c.Users.GetUserByID(id)
 	if err == nil {

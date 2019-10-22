@@ -56,7 +56,7 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 		return
 	}
 	//Проверяем доступ к чату
-	ok, err := h.chatsUseCase.CheckPermission(userID, uint64(requestedID))
+	ok, err := h.chatsUseCase.CheckChatPermission(userID, uint64(requestedID))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
