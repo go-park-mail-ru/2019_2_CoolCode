@@ -43,7 +43,7 @@ func main() {
 	}
 	defer db.Close()
 	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
-	userUseCase := useCase.NewUserUseCase(repository.NewArrayUserStore())
+	userUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
 	session := repository.NewSessionArrayRepository()
 	usersApi := delivery.NewUsersHandlers(userUseCase, session)
 	chatsApi := delivery.NewChatHandlers(userUseCase, session, chatsUseCase)
