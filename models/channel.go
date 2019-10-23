@@ -1,9 +1,11 @@
 package models
 
 type Channel struct {
-	ID string
-	Name string
+	WorkspaceID   uint64
+	ID            uint64
+	Name          string
 	TotalMSGCount int64
-	Messages []Message
-	Members []int
+	Members       []uint64
+	Admins        []uint64
+	CreatorID     uint64
 }
