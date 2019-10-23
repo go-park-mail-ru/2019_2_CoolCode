@@ -2,11 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/delivery"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/middleware"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -27,6 +29,10 @@ const (
 	DB_NAME     = "postgres"
 )
 
+var (
+	redisAddr = flag.String("addr", "redis://localhost:6379", "redis addr")
+)
+
 func main() {
 
 	//init dbConn
@@ -40,11 +46,19 @@ func main() {
 	}
 	if db == nil {
 		log.Printf("Can not connect to database")
+		return
 	}
+
+	redisConn, err := redis.DialURL(*redisAddr)
+	if err != nil {
+		log.Fatalf("cant connect to redis")
+		return
+	}
+
 	defer db.Close()
 	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
 	userUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
-	session := repository.NewSessionArrayRepository()
+	session := repository.NewSessionRedisStore(redisConn)
 	usersApi := delivery.NewUsersHandlers(userUseCase, session)
 	chatsApi := delivery.NewChatHandlers(userUseCase, session, chatsUseCase)
 	notificationApi := delivery.NewNotificationHandlers(userUseCase, session, chatsApi.Chats)
