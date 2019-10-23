@@ -1,12 +1,13 @@
-DROP TABLE IF EXISTS "users" CASCADE;
-CREATE TABLE "users"
+DROP TABLE IF EXISTS users CASCADE;
+CREATE TABLE users
 (
-    ID       BIGSERIAL    NOT NULL
+    ID           BIGSERIAL    NOT NULL
         PRIMARY KEY,
-    username VARCHAR(32)  NOT NULL,
-    email    VARCHAR(128) NOT NULL,
-    name     VARCHAR(128),
-    password VARCHAR(128) NOT NULL,
-    status   VARCHAR(32),
-    phone    VARCHAR(12)
+    username     VARCHAR(32)  NOT NULL UNIQUE,
+    email        VARCHAR(128) NOT NULL UNIQUE,
+    name         VARCHAR(128),
+    status       VARCHAR(32),
+    phone        VARCHAR(12),
+    passwordHash BYTEA        NOT NULL,
+    salt         BYTEA        NOT NULL
 );

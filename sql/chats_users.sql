@@ -1,5 +1,5 @@
-DROP TABLE IF EXISTS "chats_users" CASCADE;
-CREATE TABLE "chats_users"
+DROP TABLE IF EXISTS chats_users CASCADE;
+CREATE TABLE chats_users
 (
     isAdmin BOOLEAN NULL ,
     chatID  BIGINT  NOT NULL,
