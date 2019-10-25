@@ -19,7 +19,12 @@ func (userStore *DBUserStore) GetUserByEmail(email string) (models.User, error) 
 	selectStr := "SELECT id, username, email, name, password, status, phone FROM users WHERE email = $1"
 	row := userStore.DB.QueryRow(selectStr, email)
 
-	row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+	err := row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+
+	if err != nil {
+		return *user, models.NewServerError(err, http.StatusInternalServerError, "Can not get user: "+err.Error())
+	}
+
 	if name.Valid {
 		user.Name = name.String
 	}
@@ -40,7 +45,11 @@ func (userStore *DBUserStore) GetUserByID(ID uint64) (models.User, error) {
 	selectStr := "SELECT id, username, email, name, password, status, phone FROM users WHERE id = $1"
 	row := userStore.DB.QueryRow(selectStr, ID)
 
-	row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+	err := row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+	if err != nil {
+		return *user, models.NewServerError(err, http.StatusInternalServerError, "Can not get user: "+err.Error())
+	}
+
 	if name.Valid {
 		user.Name = name.String
 	}
