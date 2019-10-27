@@ -46,7 +46,14 @@ func NewUserUseCase(repo repository.UserRepo) UsersUseCase {
 }
 
 func (u *usersUseCase) GetUserByID(id uint64) (models.User, error) {
-	return u.repository.GetUserByID(id)
+	user, err := u.repository.GetUserByID(id)
+	if err != nil {
+		return user, err
+	}
+	if !u.Valid(user) {
+		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
+	}
+	return user, nil
 }
 
 func (u *usersUseCase) GetUserByEmail(email string) (models.User, error) {
@@ -60,9 +67,6 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 	} else {
 		if newUser.Name == "" {
 			newUser.Name = "John Doe"
-		}
-		if newUser.Username == "" {
-			newUser.Username = "Stereo"
 		}
 		err := u.repository.PutUser(newUser)
 		if err != nil { // return 500 Internal Server Error.
@@ -106,4 +110,8 @@ func (u *usersUseCase) FindUsers(name string) (models.Users, error) {
 		}
 	}
 	return result, nil
+}
+
+func (u *usersUseCase) Valid(user models.User) bool {
+	return user.Email != ""
 }

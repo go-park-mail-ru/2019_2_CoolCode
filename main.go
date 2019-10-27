@@ -98,7 +98,7 @@ func main() {
 	//TODO: r.Handle("/workspaces/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromWorkspace)).Methods("DELETE")
 	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
 	r.Handle("/workspaces", middleware.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
-	r.HandleFunc("/chats/{id:[0-9]+}/notifications", notificationApi.HandleNewWSConnection)
+	r.Handle("/chats/{id:[0-9]+}/notifications", middleware.AuthMiddleware(notificationApi.HandleNewWSConnection))
 	log.Println("Server started")
 
 	err = http.ListenAndServe(":8080", corsMiddleware(handler))

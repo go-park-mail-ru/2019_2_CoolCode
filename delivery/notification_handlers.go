@@ -39,11 +39,7 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionID, err := r.Cookie("session_id")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	sessionID, _ := r.Cookie("session_id")
 
 	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {

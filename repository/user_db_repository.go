@@ -54,8 +54,11 @@ func (userStore *DBUserStore) GetUserByID(ID uint64) (models.User, error) {
 }
 
 func (userStore *DBUserStore) PutUser(newUser *models.User) error {
-	result, _ := userStore.DB.Exec("INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)",
+	result, err := userStore.DB.Exec("INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)",
 		newUser.Username, newUser.Email, newUser.Name, newUser.Password, newUser.Status, newUser.Phone)
+	if err != nil {
+
+	}
 	affected, _ := result.RowsAffected()
 	fmt.Printf("Rows affected: %v", affected)
 	return nil
@@ -76,8 +79,8 @@ func (userStore *DBUserStore) Replace(ID uint64, newUser *models.User) error {
 
 func (userStore *DBUserStore) Contains(user models.User) bool {
 	sourceUser := &models.User{}
-	selectStr := "SELECT id, username, email, password  FROM users WHERE email = $1"
-	row := userStore.DB.QueryRow(selectStr, user.Email)
+	selectStr := "SELECT id, username, email, password  FROM users WHERE email = $1 or username = $2"
+	row := userStore.DB.QueryRow(selectStr, user.Email, user.Username)
 
 	err := row.Scan(&sourceUser.ID, &sourceUser.Username, &sourceUser.Email, &sourceUser.Password)
 	if err != nil {

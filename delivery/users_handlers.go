@@ -303,7 +303,7 @@ func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, erro
 	if err == nil {
 		return user, nil
 	} else {
-		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
+		return user, err
 	}
 }
 
