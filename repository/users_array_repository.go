@@ -109,7 +109,7 @@ func (userStore ArrayUserStore) GetUserByID(ID uint64) (models.User, error) {
 	return resultUser, models.NewClientError(nil, http.StatusBadRequest, "Bad request: user not contains:(")
 }
 
-func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
+func (userStore *ArrayUserStore) PutUser(newUser *models.User) (uint64, error) {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
@@ -120,7 +120,7 @@ func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
 	}
 	userStore.users[newUser.ID] = newUser
 
-	return nil
+	return newUser.ID, nil
 }
 
 func (userStore *ArrayUserStore) Replace(ID uint64, newUser *models.User) error {

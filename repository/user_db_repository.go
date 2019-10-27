@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"net/http"
 )
@@ -62,16 +61,22 @@ func (userStore *DBUserStore) GetUserByID(ID uint64) (models.User, error) {
 	return *user, nil
 }
 
-func (userStore *DBUserStore) PutUser(newUser *models.User) error {
-	result, _ := userStore.DB.Exec("INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)",
+func (userStore *DBUserStore) PutUser(newUser *models.User) (uint64, error) {
+	var ID uint64
+
+	// insertQuery := "INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)"
+	row := userStore.DB.QueryRow("INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)",
 		newUser.Username, newUser.Email, newUser.Name, newUser.Password, newUser.Status, newUser.Phone)
-	affected, _ := result.RowsAffected()
-	fmt.Printf("Rows affected: %v", affected)
-	return nil
+
+	err := row.Scan(&ID)
+	if err != nil {
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not put user: "+err.Error())
+	}
+
+	return ID, nil
 }
 
 func (userStore *DBUserStore) Replace(ID uint64, newUser *models.User) error {
-
 	_, err := userStore.DB.Exec(
 		"UPDATE users SET username = $1, email = $2, name = $3, password = $4, status = $5, phone = $6 WHERE id = $7",
 		newUser.Username, newUser.Email, newUser.Name, newUser.Password, newUser.Status, newUser.Phone, ID,
