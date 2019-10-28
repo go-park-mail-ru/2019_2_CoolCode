@@ -8,5 +8,5 @@ type UserRepo interface {
 	PutUser(newUser *models.User) (uint64, error)
 	Replace(ID uint64, newUser *models.User) error
 	Contains(user models.User) bool
-	GetUsers() models.Users
+	GetUsers() (models.Users, error)
 }

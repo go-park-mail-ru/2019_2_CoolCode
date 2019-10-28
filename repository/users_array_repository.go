@@ -49,8 +49,12 @@ func (userStore *ArrayUserStore) readUsers(users models.Users) {
 }
 
 func (userStore *ArrayUserStore) saveUsers() {
-	usersSlice := userStore.GetUsers()
-	err := os.Remove("users.txt")
+	usersSlice, err := userStore.GetUsers()
+	if err != nil {
+		log.Println(`Getting all users error:`, err.Error())
+		return
+	}
+	err = os.Remove("users.txt")
 	if err != nil {
 		log.Println(`Removing 'users.txt' error:`, err.Error())
 	}
@@ -77,12 +81,12 @@ func (userStore *ArrayUserStore) Contains(user models.User) bool {
 	return false
 }
 
-func (userStore *ArrayUserStore) GetUsers() models.Users {
+func (userStore *ArrayUserStore) GetUsers() (models.Users, error) {
 	var usersSlice models.Users
 	for _, user := range userStore.users {
 		usersSlice.Users = append(usersSlice.Users, user)
 	}
-	return usersSlice
+	return usersSlice, nil
 }
 
 func (userStore *ArrayUserStore) GetUserByEmail(email string) (models.User, error) {

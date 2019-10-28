@@ -10,6 +10,31 @@ type DBUserStore struct {
 	DB *sql.DB
 }
 
+func (userStore *DBUserStore) GetUserByID(ID uint64) (models.User, error) {
+	user := &models.User{}
+	var name sql.NullString
+	var status sql.NullString
+	var phone sql.NullString
+	selectStr := "SELECT id, username, email, name, password, status, phone FROM users WHERE id = $1"
+	row := userStore.DB.QueryRow(selectStr, ID)
+
+	err := row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+	if err != nil {
+		return *user, models.NewServerError(err, http.StatusInternalServerError, "Can not get user: "+err.Error())
+	}
+
+	if name.Valid {
+		user.Name = name.String
+	}
+	if status.Valid {
+		user.Status = status.String
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	}
+	return *user, nil
+}
+
 func (userStore *DBUserStore) GetUserByEmail(email string) (models.User, error) {
 	user := &models.User{}
 	var name sql.NullString
@@ -36,39 +61,14 @@ func (userStore *DBUserStore) GetUserByEmail(email string) (models.User, error) 
 	return *user, nil
 }
 
-func (userStore *DBUserStore) GetUserByID(ID uint64) (models.User, error) {
-	user := &models.User{}
-	var name sql.NullString
-	var status sql.NullString
-	var phone sql.NullString
-	selectStr := "SELECT id, username, email, name, password, status, phone FROM users WHERE id = $1"
-	row := userStore.DB.QueryRow(selectStr, ID)
-
-	err := row.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
-	if err != nil {
-		return *user, models.NewServerError(err, http.StatusInternalServerError, "Can not get user: "+err.Error())
-	}
-
-	if name.Valid {
-		user.Name = name.String
-	}
-	if status.Valid {
-		user.Status = status.String
-	}
-	if phone.Valid {
-		user.Phone = phone.String
-	}
-	return *user, nil
-}
-
 func (userStore *DBUserStore) PutUser(newUser *models.User) (uint64, error) {
 	var ID uint64
 
-	// insertQuery := "INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)"
-	row := userStore.DB.QueryRow("INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6)",
+	insertQuery := `INSERT INTO users (username, email, name, password, status, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	rows := userStore.DB.QueryRow(insertQuery,
 		newUser.Username, newUser.Email, newUser.Name, newUser.Password, newUser.Status, newUser.Phone)
 
-	err := row.Scan(&ID)
+	err := rows.Scan(&ID)
 	if err != nil {
 		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not put user: "+err.Error())
 	}
@@ -100,15 +100,21 @@ func (userStore *DBUserStore) Contains(user models.User) bool {
 	return true
 }
 
-func (userStore *DBUserStore) GetUsers() models.Users {
+func (userStore *DBUserStore) GetUsers() (models.Users, error) {
 	userSlice := models.Users{}
 	var name sql.NullString
 	var status sql.NullString
 	var phone sql.NullString
-	rows, _ := userStore.DB.Query("SELECT id, username, email, name, password, status, phone FROM users")
+	rows, err := userStore.DB.Query("SELECT id, username, email, name, password, status, phone FROM users")
+	if err != nil {
+		return userSlice, models.NewServerError(err, http.StatusInternalServerError, "Can not get all users: "+err.Error())
+	}
 	for rows.Next() {
 		user := &models.User{}
-		rows.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &name, &user.Password, &status, &phone)
+		if err != nil {
+			return userSlice, models.NewServerError(err, http.StatusInternalServerError, "Can not get all users: "+err.Error())
+		}
 		if name.Valid {
 			user.Name = name.String
 		}
@@ -122,10 +128,9 @@ func (userStore *DBUserStore) GetUsers() models.Users {
 	}
 	rows.Close()
 
-	return userSlice
+	return userSlice, nil
 }
 
-// TODO: handle errors
 func NewUserDBStore(db *sql.DB) UserRepo {
 	return &DBUserStore{
 		db,
