@@ -114,6 +114,7 @@ func (c *ChatHandlers) GetChatById(w http.ResponseWriter, r *http.Request) {
 func (c *ChatHandlers) RemoveChat(w http.ResponseWriter, r *http.Request) {
 
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
+	//TODO:Check error
 	user, err := c.parseCookie(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)

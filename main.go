@@ -24,9 +24,9 @@ import (
 //500 - фатальная ошибка на сервере
 
 const (
-	DB_USER     = "root"
-	DB_PASSWORD = "1234"
-	DB_NAME     = "coolslackdb"
+	DB_USER     = "postgres"
+	DB_PASSWORD = "1"
+	DB_NAME     = "postgres"
 )
 
 var (
@@ -57,11 +57,13 @@ func main() {
 
 	defer db.Close()
 	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
-	userUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
-	session := repository.NewSessionRedisStore(redisConn)
-	usersApi := delivery.NewUsersHandlers(userUseCase, session)
-	chatsApi := delivery.NewChatHandlers(userUseCase, session, chatsUseCase)
-	notificationApi := delivery.NewNotificationHandlers(userUseCase, session, chatsApi.Chats)
+	messagesUseCase := useCase.NewMessageUseCase(repository.NewMessageDbRepository(db), chatsUseCase)
+	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
+	sessionRepository := repository.NewSessionRedisStore(redisConn)
+	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository)
+	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase)
+	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats)
+	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -99,6 +101,12 @@ func main() {
 	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
 	r.Handle("/workspaces", middleware.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
 	r.Handle("/chats/{id:[0-9]+}/notifications", middleware.AuthMiddleware(notificationApi.HandleNewWSConnection))
+
+	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.SendMessage)).Methods("POST").
+		HeadersRegexp("Content-Type", "application/(text|json)")
+	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.GetMessagesByChatID)).Methods("GET")
+	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
+	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
 	log.Println("Server started")
 
 	err = http.ListenAndServe(":8080", corsMiddleware(handler))
@@ -107,6 +115,3 @@ func main() {
 		return
 	}
 }
-
-//TODO: middleware для ошибок
-//TODO: ECHO ???

@@ -265,7 +265,7 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
 		err := handlers.Sessions.Put(cookie.Value, user.ID)
 		if err != nil {
-			//TODO:error
+			handlers.sendError(err, w)
 		}
 		user.Password = ""
 		body, err := json.Marshal(user)

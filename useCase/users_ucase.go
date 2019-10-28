@@ -68,7 +68,7 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 		if newUser.Name == "" {
 			newUser.Name = "John Doe"
 		}
-		err := u.repository.PutUser(newUser)
+		_, err := u.repository.PutUser(newUser)
 		if err != nil { // return 500 Internal Server Error.
 			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")

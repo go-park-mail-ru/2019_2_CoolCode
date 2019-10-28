@@ -1,17 +1,17 @@
 package models
 
-type Chat struct{
-	ID uint64
-	Name string
+type Chat struct {
+	ID            uint64
+	Name          string
 	TotalMSGCount int64
-	Members []uint64
+	Members       []uint64
 }
 
-func NewChatModel(Name string,ID1 uint64,ID2 uint64) *Chat{
+func NewChatModel(Name string, ID1 uint64, ID2 uint64) *Chat {
 	return &Chat{
 		ID:            0,
 		Name:          Name,
 		TotalMSGCount: 0,
-		Members: []uint64{ID1,ID2},
+		Members:       []uint64{ID1, ID2},
 	}
 }

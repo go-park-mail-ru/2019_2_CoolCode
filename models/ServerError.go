@@ -11,7 +11,6 @@ type ServerError struct {
 	Status int
 }
 
-
 func (e ServerError) Error() string {
 	if e.Cause == nil {
 		return e.Detail

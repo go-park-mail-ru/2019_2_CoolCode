@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"net/http"
 )

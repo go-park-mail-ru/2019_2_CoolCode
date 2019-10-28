@@ -53,7 +53,7 @@ func TestSignUp(t *testing.T) {
 			Body: models.User{
 				Email:    "test1@test.com",
 				Password: "1",
-				Username:"test",
+				Username: "test",
 			},
 			Method:     "POST",
 			URL:        "/users",
@@ -263,7 +263,7 @@ func TestGetUser(t *testing.T) {
 func TestFindUsers(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
-			SessionID:globalSessionID,
+			SessionID:  globalSessionID,
 			Method:     "GET",
 			URL:        "/users/tes",
 			StatusCode: http.StatusOK,
@@ -302,8 +302,8 @@ func TestEditUser(t *testing.T) {
 	cases := []TestCase{
 		TestCase{
 			Body: models.User{
-				ID:       1,
-				Email:    "test1@test.com",
+				ID:    1,
+				Email: "test1@test.com",
 			},
 			Method:     "PUT",
 			SessionID:  globalSessionID,
@@ -349,8 +349,6 @@ func TestEditUser(t *testing.T) {
 	}
 
 }
-
-
 
 func TestLogout(t *testing.T) {
 	cases := []TestCase{
