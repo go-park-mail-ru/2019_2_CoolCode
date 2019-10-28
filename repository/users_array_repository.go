@@ -49,8 +49,12 @@ func (userStore *ArrayUserStore) readUsers(users models.Users) {
 }
 
 func (userStore *ArrayUserStore) saveUsers() {
-	usersSlice := userStore.GetUsers()
-	err := os.Remove("users.txt")
+	usersSlice, err := userStore.GetUsers()
+	if err != nil {
+		log.Println(`Getting all users error:`, err.Error())
+		return
+	}
+	err = os.Remove("users.txt")
 	if err != nil {
 		log.Println(`Removing 'users.txt' error:`, err.Error())
 	}
@@ -77,12 +81,12 @@ func (userStore *ArrayUserStore) Contains(user models.User) bool {
 	return false
 }
 
-func (userStore *ArrayUserStore) GetUsers() models.Users {
+func (userStore *ArrayUserStore) GetUsers() (models.Users, error) {
 	var usersSlice models.Users
 	for _, user := range userStore.users {
 		usersSlice.Users = append(usersSlice.Users, user)
 	}
-	return usersSlice
+	return usersSlice, nil
 }
 
 func (userStore *ArrayUserStore) GetUserByEmail(email string) (models.User, error) {
@@ -109,7 +113,7 @@ func (userStore ArrayUserStore) GetUserByID(ID uint64) (models.User, error) {
 	return resultUser, models.NewClientError(nil, http.StatusBadRequest, "Bad request: user not contains:(")
 }
 
-func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
+func (userStore *ArrayUserStore) PutUser(newUser *models.User) (uint64, error) {
 	defer userStore.saveUsers()
 	userStore.mutex.Lock()
 	defer userStore.mutex.Unlock()
@@ -120,7 +124,7 @@ func (userStore *ArrayUserStore) PutUser(newUser *models.User) error {
 	}
 	userStore.users[newUser.ID] = newUser
 
-	return nil
+	return newUser.ID, nil
 }
 
 func (userStore *ArrayUserStore) Replace(ID uint64, newUser *models.User) error {

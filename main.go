@@ -24,9 +24,9 @@ import (
 //500 - фатальная ошибка на сервере
 
 const (
-	DB_USER     = "postgres"
-	DB_PASSWORD = "1"
-	DB_NAME     = "postgres"
+	DB_USER     = "root"
+	DB_PASSWORD = "1234"
+	DB_NAME     = "coolslackdb"
 )
 
 var (

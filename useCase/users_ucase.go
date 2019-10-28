@@ -103,7 +103,11 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 
 func (u *usersUseCase) FindUsers(name string) (models.Users, error) {
 	var result models.Users
-	for _, user := range u.repository.GetUsers().Users {
+	userSlice, err := u.repository.GetUsers()
+	if err != nil {
+		return result, err
+	}
+	for _, user := range userSlice.Users {
 		if strings.HasPrefix(user.Username, name) {
 			user.Password = ""
 			result.Users = append(result.Users, user)
