@@ -59,11 +59,12 @@ func main() {
 	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
 	messagesUseCase := useCase.NewMessageUseCase(repository.NewMessageDbRepository(db), chatsUseCase)
 	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
+	notificationsUseCase := useCase.NewNotificationUseCase()
 	sessionRepository := repository.NewSessionRedisStore(redisConn)
 	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository)
 	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase)
-	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats)
-	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository)
+	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase)
+	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),

@@ -9,7 +9,7 @@ type WebSocketHub struct {
 	clients          map[string]*WebSocketClient
 	AddClientChan    chan *websocket.Conn
 	removeClientChan chan *websocket.Conn
-	BroadcastChan    chan Message
+	BroadcastChan    chan []byte
 }
 
 func NewHub() *WebSocketHub {
@@ -17,7 +17,7 @@ func NewHub() *WebSocketHub {
 		clients:          make(map[string]*WebSocketClient),
 		AddClientChan:    make(chan *websocket.Conn),
 		removeClientChan: make(chan *websocket.Conn),
-		BroadcastChan:    make(chan Message),
+		BroadcastChan:    make(chan []byte),
 	}
 }
 
@@ -43,9 +43,9 @@ func (h *WebSocketHub) addClient(conn *websocket.Conn) {
 	}
 }
 
-func (h *WebSocketHub) broadcastMessage(m Message) {
+func (h *WebSocketHub) broadcastMessage(m []byte) {
 	for _, conn := range h.clients {
-		err := conn.ws.WriteJSON(m)
+		err := conn.ws.WriteMessage(websocket.TextMessage, m)
 		if err != nil {
 			fmt.Println("Error broadcasting message: ", err)
 			return

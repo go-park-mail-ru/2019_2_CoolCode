@@ -18,9 +18,9 @@ type NotificationHandlers struct {
 	Sessions            repository.SessionRepository
 }
 
-func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository, chats useCase.ChatsUseCase) NotificationHandlers {
+func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository, chats useCase.ChatsUseCase, notifications useCase.NotificationUseCase) NotificationHandlers {
 	return NotificationHandlers{
-		notificationUseCase: useCase.NewNotificationUseCase(),
+		notificationUseCase: notifications,
 		chatsUseCase:        chats,
 		Users:               users,
 		Sessions:            sessions,
@@ -68,12 +68,11 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 	hub.AddClientChan <- ws
 
 	for {
-		var m models.Message
+		var m []byte
 
-		err := ws.ReadJSON(&m)
+		_, m, err := ws.ReadMessage()
 
 		if err != nil {
-			hub.BroadcastChan <- models.Message{}
 			hub.RemoveClient(ws)
 			return
 		}

@@ -20,16 +20,18 @@ type MessageHandlers interface {
 }
 
 type MessageHandlersImpl struct {
-	useCase  useCase.MessagesUseCase
-	Users    useCase.UsersUseCase
-	Sessions repository.SessionRepository
+	useCase       useCase.MessagesUseCase
+	Users         useCase.UsersUseCase
+	Sessions      repository.SessionRepository
+	Notifications useCase.NotificationUseCase
 }
 
-func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseCase, sessions repository.SessionRepository) MessageHandlers {
+func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseCase, sessions repository.SessionRepository, notificationUseCase useCase.NotificationUseCase) MessageHandlers {
 	return &MessageHandlersImpl{
-		useCase:  useCase,
-		Users:    users,
-		Sessions: sessions,
+		useCase:       useCase,
+		Users:         users,
+		Sessions:      sessions,
+		Notifications: notificationUseCase,
 	}
 }
 
@@ -60,6 +62,18 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.Printf("An error occurred %v", err)
 	}
+
+	//send to websocket
+	message.ID = id
+	websocketMessage := models.WebsocketMessage{
+		WebsocketEventType: 1,
+		Body:               jsonResponse,
+	}
+	websocketJson, err := json.Marshal(websocketMessage)
+	if err != nil {
+		log.Printf("An error occurred %v", err)
+	}
+	m.Notifications.SendMessage(message.ChatID, websocketJson)
 
 }
 
