@@ -46,7 +46,14 @@ func NewUserUseCase(repo repository.UserRepo) UsersUseCase {
 }
 
 func (u *usersUseCase) GetUserByID(id uint64) (models.User, error) {
-	return u.repository.GetUserByID(id)
+	user, err := u.repository.GetUserByID(id)
+	if err != nil {
+		return user, err
+	}
+	if !u.Valid(user) {
+		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
+	}
+	return user, nil
 }
 
 func (u *usersUseCase) GetUserByEmail(email string) (models.User, error) {
@@ -61,10 +68,7 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 		if newUser.Name == "" {
 			newUser.Name = "John Doe"
 		}
-		if newUser.Username == "" {
-			newUser.Username = "Stereo"
-		}
-		err := u.repository.PutUser(newUser)
+		_, err := u.repository.PutUser(newUser)
 		if err != nil { // return 500 Internal Server Error.
 			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")
@@ -99,11 +103,19 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 
 func (u *usersUseCase) FindUsers(name string) (models.Users, error) {
 	var result models.Users
-	for _, user := range u.repository.GetUsers().Users {
+	userSlice, err := u.repository.GetUsers()
+	if err != nil {
+		return result, err
+	}
+	for _, user := range userSlice.Users {
 		if strings.HasPrefix(user.Username, name) {
 			user.Password = ""
 			result.Users = append(result.Users, user)
 		}
 	}
 	return result, nil
+}
+
+func (u *usersUseCase) Valid(user models.User) bool {
+	return user.Email != ""
 }

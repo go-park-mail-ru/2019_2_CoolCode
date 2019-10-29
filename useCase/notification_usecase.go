@@ -16,3 +16,9 @@ func NewNotificationUseCase() NotificationUseCase {
 func (u *NotificationUseCase) OpenConn(ID uint64) (*models.WebSocketHub, error) {
 	return u.notificationRepository.GetNotificationHub(ID), nil
 }
+
+func (u *NotificationUseCase) SendMessage(chatID uint64, message []byte) error {
+	hub := u.notificationRepository.GetNotificationHub(chatID)
+	hub.BroadcastChan <- message
+	return nil
+}

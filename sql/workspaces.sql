@@ -1,5 +1,5 @@
-DROP TABLE IF EXISTS "workspaces" CASCADE;
-CREATE TABLE "workspaces"
+DROP TABLE IF EXISTS workspaces CASCADE;
+CREATE TABLE workspaces
 (
     ID        BIGSERIAL    NOT NULL
         PRIMARY KEY,

@@ -1,12 +1,17 @@
 package main
 
 import (
+	"database/sql"
+	"flag"
+	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/delivery"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/middleware"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 )
@@ -18,12 +23,48 @@ import (
 //405 - неверный метод
 //500 - фатальная ошибка на сервере
 
+const (
+	DB_USER     = "postgres"
+	DB_PASSWORD = "1"
+	DB_NAME     = "postgres"
+)
+
+var (
+	redisAddr = flag.String("addr", "redis://localhost:6379", "redis addr")
+)
+
 func main() {
-	userUseCase := useCase.NewUserUseCase(repository.NewArrayUserStore())
-	session := repository.NewSessionArrayRepository()
-	usersApi := delivery.NewUsersHandlers(userUseCase, session)
-	chatsApi := delivery.NewChatHandlers(userUseCase, session)
-	notificationApi := delivery.NewNotificationHandlers(userUseCase, session, chatsApi.Chats)
+
+	//init dbConn
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
+		DB_USER, DB_PASSWORD, DB_NAME)
+
+	db, err := sql.Open("postgres", dbinfo)
+	if err != nil {
+		log.Printf("Error before started: %s", err.Error())
+		return
+	}
+	if db == nil {
+		log.Printf("Can not connect to database")
+		return
+	}
+
+	redisConn, err := redis.DialURL(*redisAddr)
+	if err != nil {
+		log.Fatalf("cant connect to redis")
+		return
+	}
+
+	defer db.Close()
+	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
+	messagesUseCase := useCase.NewMessageUseCase(repository.NewMessageDbRepository(db), chatsUseCase)
+	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
+	notificationsUseCase := useCase.NewNotificationUseCase()
+	sessionRepository := repository.NewSessionRedisStore(redisConn)
+	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository)
+	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase)
+	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase)
+	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://localhost:3000"}),
@@ -45,17 +86,33 @@ func main() {
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
 	r.HandleFunc("/chats", chatsApi.PostChat).Methods("POST")
-	r.HandleFunc("/chats/{id:[0-9]+}", chatsApi.PostChat).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}/chats", chatsApi.GetChatsByUser).Methods("GET")
-	r.HandleFunc("/chats/{id:[0-9]+}/notifications", notificationApi.HandleNewWSConnection)
+	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChatById)).Methods("GET")
+	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChat)).Methods("DELETE")
+
+	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChannelById)).Methods("GET")
+	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditChannel)).Methods("PUT")
+	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChannel)).Methods("DELETE")
+	//TODO: r.Handle("/channels/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromChannel)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}/channels", middleware.AuthMiddleware(chatsApi.PostChannel)).Methods("POST")
+
+	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetWorkspaceById)).Methods("GET")
+	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditWorkspace)).Methods("PUT")
+	//TODO: r.Handle("/workspaces/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces", middleware.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
+	r.Handle("/chats/{id:[0-9]+}/notifications", middleware.AuthMiddleware(notificationApi.HandleNewWSConnection))
+
+	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.SendMessage)).Methods("POST").
+		HeadersRegexp("Content-Type", "application/(text|json)")
+	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.GetMessagesByChatID)).Methods("GET")
+	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
+	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
 	log.Println("Server started")
 
-	err := http.ListenAndServe(":8080", corsMiddleware(handler))
+	err = http.ListenAndServe(":8080", corsMiddleware(handler))
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
 		return
 	}
 }
-
-//TODO: middleware для ошибок
-//TODO: ECHO ???

@@ -1,5 +1,4 @@
 package models
 
-type Session struct{
-
+type Session struct {
 }

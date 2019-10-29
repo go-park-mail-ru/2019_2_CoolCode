@@ -18,9 +18,9 @@ type NotificationHandlers struct {
 	Sessions            repository.SessionRepository
 }
 
-func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository, chats useCase.ChatsUseCase) NotificationHandlers {
+func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository, chats useCase.ChatsUseCase, notifications useCase.NotificationUseCase) NotificationHandlers {
 	return NotificationHandlers{
-		notificationUseCase: useCase.NewNotificationUseCase(),
+		notificationUseCase: notifications,
 		chatsUseCase:        chats,
 		Users:               users,
 		Sessions:            sessions,
@@ -39,11 +39,7 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionID, err := r.Cookie("session_id")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	sessionID, _ := r.Cookie("session_id")
 
 	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
@@ -56,7 +52,7 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 		return
 	}
 	//Проверяем доступ к чату
-	ok, err := h.chatsUseCase.CheckPermission(userID, uint64(requestedID))
+	ok, err := h.chatsUseCase.CheckChatPermission(userID, uint64(requestedID))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -72,12 +68,11 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 	hub.AddClientChan <- ws
 
 	for {
-		var m models.Message
+		var m []byte
 
-		err := ws.ReadJSON(&m)
+		_, m, err := ws.ReadMessage()
 
 		if err != nil {
-			hub.BroadcastChan <- models.Message{}
 			hub.RemoveClient(ws)
 			return
 		}

@@ -65,7 +65,7 @@ func (p *PhotosArrayRepository) GetPhoto(id int) (*os.File, error) {
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
 		file, err = os.Open(p.dirPath + "default" + ".png")
-		return file, nil
+		return file, err
 	}
 	return file, nil
 }
