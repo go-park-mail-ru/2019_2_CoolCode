@@ -35,7 +35,7 @@ func (h *WebSocketHub) Run() {
 }
 
 func (h *WebSocketHub) RemoveClient(conn *websocket.Conn) {
-	delete(h.clients, conn.LocalAddr().String())
+	delete(h.clients, conn.RemoteAddr().String())
 }
 func (h *WebSocketHub) addClient(conn *websocket.Conn) {
 	h.clients[conn.RemoteAddr().String()] = &WebSocketClient{

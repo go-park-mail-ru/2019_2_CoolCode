@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -19,13 +20,16 @@ func AuthMiddleware(next func(w http.ResponseWriter, r *http.Request)) http.Hand
 	})
 }
 
-func LogMiddleware(next http.Handler) http.Handler {
+func LogMiddleware(next http.Handler, logrusLogger *logrus.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("accessLogMiddleware", r.URL.Path)
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		fmt.Printf("[%s] %s, %s %s\n",
-			r.Method, r.RemoteAddr, r.URL.Path, time.Since(start))
+		logrusLogger.WithFields(logrus.Fields{
+			"method":      r.Method,
+			"remote_addr": r.RemoteAddr,
+			"work_time":   time.Since(start),
+		}).Info(r.URL.Path)
 	})
 }
 

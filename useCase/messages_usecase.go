@@ -7,7 +7,7 @@ import (
 )
 
 type MessagesUseCase interface {
-	SendMessage(message *models.Message) (uint64, error)
+	SaveMessage(message *models.Message) (uint64, error)
 	EditMessage(message *models.Message, userID uint64) error
 	DeleteMessage(messageID uint64, userID uint64) error
 	GetChatMessages(chatID uint64, userID uint64) (models.Messages, error)
@@ -43,7 +43,7 @@ func (m *MessageUseCaseImpl) GetMessageByID(messageID uint64) (*models.Message, 
 	panic("implement me")
 }
 
-func (m *MessageUseCaseImpl) SendMessage(message *models.Message) (uint64, error) {
+func (m *MessageUseCaseImpl) SaveMessage(message *models.Message) (uint64, error) {
 	permissionOk, err := m.chats.CheckChatPermission(message.AuthorID, message.ChatID)
 	if err != nil {
 		return 0, err

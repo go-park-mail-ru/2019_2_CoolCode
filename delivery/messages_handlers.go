@@ -7,6 +7,7 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"strconv"
@@ -51,7 +52,7 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	}
 	message.AuthorID = user.ID
 	message.ChatID = uint64(chatID)
-	id, err := m.useCase.SendMessage(message)
+	id, err := m.useCase.SaveMessage(message)
 	if err != nil {
 		utils.SendError(err, w)
 	}
@@ -67,7 +68,7 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	message.ID = id
 	websocketMessage := models.WebsocketMessage{
 		WebsocketEventType: 1,
-		Body:               jsonResponse,
+		Body:               *message,
 	}
 	websocketJson, err := json.Marshal(websocketMessage)
 	if err != nil {

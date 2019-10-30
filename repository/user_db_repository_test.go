@@ -32,9 +32,7 @@ func TestDBUserStore_GetUserByID(t *testing.T) {
 		WithArgs(elemID).
 		WillReturnRows(rows)
 
-	repo := &DBUserStore{
-		DB: db,
-	}
+	repo := NewUserDBStore(db)
 
 	item, err := repo.GetUserByID(elemID)
 	if err != nil {
@@ -316,7 +314,7 @@ func TestDBUserStore_Contains(t *testing.T) {
 	// OK Query
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
-		WithArgs(testUser.Email).
+		WithArgs(testUser.Email, testUser.Username).
 		WillReturnRows(rows)
 
 	contains := repo.Contains(*testUser)
@@ -332,7 +330,7 @@ func TestDBUserStore_Contains(t *testing.T) {
 	// Query Error
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
-		WithArgs(testUser.Email).
+		WithArgs(testUser.Email, testUser.Username).
 		WillReturnError(fmt.Errorf("db_error"))
 
 	contains = repo.Contains(*testUser)
@@ -351,7 +349,7 @@ func TestDBUserStore_Contains(t *testing.T) {
 
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
-		WithArgs(testUser.Email).
+		WithArgs(testUser.Email, testUser.Username).
 		WillReturnRows(rows)
 
 	contains = repo.Contains(*testUser)

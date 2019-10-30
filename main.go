@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 )
@@ -35,6 +36,8 @@ var (
 
 func main() {
 
+	logrusLogger := logrus.New()
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	//init dbConn
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
 		DB_USER, DB_PASSWORD, DB_NAME)
@@ -74,7 +77,7 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-	handler := middleware.PanicMiddleware(middleware.LogMiddleware(r))
+	handler := middleware.PanicMiddleware(middleware.LogMiddleware(r, logrusLogger))
 	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
 	r.HandleFunc("/login", usersApi.Login).Methods("POST")
 	r.Handle("/users/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.EditProfile)).Methods("PUT")

@@ -8,6 +8,7 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,11 +50,82 @@ func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
 
 	_, err = w.Write(body)
 
+	logrus.WithFields(logrus.Fields{
+		"error code": httpError.ResponseHeaders(),
+		"error body": httpError.ResponseBody(),
+	}).Error()
+
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
 		w.WriteHeader(500)
 		return
 	}
+}
+
+func (handlers *UserHandlers) SignUp(w http.ResponseWriter, r *http.Request) {
+	log.Println("New request: ", r.Body)
+
+	var newUser models.User
+	body := r.Body
+	decoder := json.NewDecoder(body)
+	err := decoder.Decode(&newUser)
+	if err != nil {
+
+		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err, w)
+		return
+	}
+
+	err = handlers.Users.SignUp(&newUser)
+	if err != nil {
+		handlers.sendError(err, w)
+		return
+	}
+}
+
+func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
+	log.Println("New request: ", r.Body)
+
+	var loginUser models.User
+	body := r.Body
+	decoder := json.NewDecoder(body)
+	err := decoder.Decode(&loginUser)
+	if err != nil {
+		log.Println("Json decoding error")
+		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.sendError(err, w)
+	}
+
+	user, err := handlers.Users.Login(loginUser)
+	if err != nil {
+		handlers.sendError(err, w)
+	} else {
+		token := uuid.New()
+		expiration := time.Now().Add(365 * 24 * time.Hour)
+		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
+		err := handlers.Sessions.Put(cookie.Value, user.ID)
+		if err != nil {
+			handlers.sendError(err, w)
+		}
+		user.Password = ""
+		body, err := json.Marshal(user)
+		if err != nil {
+			log.Printf("An error occurred: %v", err)
+			w.WriteHeader(500)
+			return
+		}
+		http.SetCookie(w, &cookie)
+		w.Header().Set("content-type", "application/json")
+
+		_, err = w.Write(body)
+		if err != nil {
+			log.Printf("An error occurred: %v", err)
+			w.WriteHeader(500)
+			return
+		}
+		return
+	}
+
 }
 
 func (handlers *UserHandlers) SavePhoto(w http.ResponseWriter, r *http.Request) {
@@ -68,15 +140,16 @@ func (handlers *UserHandlers) SavePhoto(w http.ResponseWriter, r *http.Request) 
 
 	err = r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
+
+		//log.Printf("An error occurred: %v", err)
 		w.WriteHeader(500)
 		return
 	}
 	file, _, err := r.FormFile("file")
 
 	if err != nil {
-		log.Printf("Error Retrieving the File: %v", err)
 		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid Photo.")
+
 		handlers.sendError(err, w)
 		return
 	}
@@ -184,26 +257,6 @@ func (handlers UserHandlers) getUserBySession(w http.ResponseWriter, r *http.Req
 	log.Println("Valid user session")
 }
 
-func (handlers *UserHandlers) SignUp(w http.ResponseWriter, r *http.Request) {
-	log.Println("New request: ", r.Body)
-
-	var newUser models.User
-	body := r.Body
-	decoder := json.NewDecoder(body)
-	err := decoder.Decode(&newUser)
-	if err != nil {
-		log.Println("Json decoding error")
-		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		handlers.sendError(err, w)
-		return
-	}
-
-	err = handlers.Users.SignUp(&newUser)
-	if err != nil {
-		handlers.sendError(err, w)
-	}
-}
-
 func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request) {
 	sessionID, _ := r.Cookie("session_id")
 
@@ -241,51 +294,6 @@ func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request
 	}
 
 	handlers.Users.ChangeUser(editUser)
-}
-
-func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
-	log.Println("New request: ", r.Body)
-
-	var loginUser models.User
-	body := r.Body
-	decoder := json.NewDecoder(body)
-	err := decoder.Decode(&loginUser)
-	if err != nil {
-		log.Println("Json decoding error")
-		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		handlers.sendError(err, w)
-	}
-
-	user, err := handlers.Users.Login(loginUser)
-	if err != nil {
-		handlers.sendError(err, w)
-	} else {
-		token := uuid.New()
-		expiration := time.Now().Add(365 * 24 * time.Hour)
-		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
-		err := handlers.Sessions.Put(cookie.Value, user.ID)
-		if err != nil {
-			handlers.sendError(err, w)
-		}
-		user.Password = ""
-		body, err := json.Marshal(user)
-		if err != nil {
-			log.Printf("An error occurred: %v", err)
-			w.WriteHeader(500)
-			return
-		}
-		http.SetCookie(w, &cookie)
-		w.Header().Set("content-type", "application/json")
-
-		_, err = w.Write(body)
-		if err != nil {
-			log.Printf("An error occurred: %v", err)
-			w.WriteHeader(500)
-			return
-		}
-		return
-	}
-
 }
 
 func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
