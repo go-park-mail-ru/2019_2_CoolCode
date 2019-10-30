@@ -111,6 +111,7 @@ func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) (uint64, e
 	}
 
 	defer tx.Rollback()
+
 	_ = c.db.QueryRow("INSERT INTO workspaces (name, creatorid) VALUES ($1,$2) RETURNING id", workspace.Name, workspace.CreatorID).Scan(&workspaceID)
 	sqlStr := "INSERT INTO workspaces_users (workspaceid, userid,isAdmin) VALUES "
 	var vals []interface{}
@@ -124,6 +125,7 @@ func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) (uint64, e
 			vals = append(vals, workspaceID, userID, false)
 		}
 	}
+
 	sqlStr = strings.TrimSuffix(sqlStr, ",")
 	_, err = c.db.Exec(sqlStr, vals...)
 	if err != nil {
@@ -351,14 +353,14 @@ func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChat: "+err.Error())
 	}
 
-	row := tx.QueryRow("SELECT id,name,totalmsgcount FROM chats WHERE id=$1 and ischannel=false", ID)
+	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1 AND ischannel=false", ID)
 
-	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount); err != nil {
+	err = row.Scan(&result.ID, &result.Name, &result.TotalMSGCount)
+	if err != nil {
 		return result, models.NewClientError(err, http.StatusBadRequest, "chat not exists: "+err.Error())
 	}
 
 	rows, err := tx.Query("SELECT userid FROM chats_users WHERE chatid=$1", ID)
-
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChat: "+err.Error())
 	}
