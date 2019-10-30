@@ -7,6 +7,6 @@ CREATE TABLE chats
     name          VARCHAR(128) NULL,
     workspaceID   BIGINT       NULL,
     creatorID     BIGINT       NULL,
-    FOREIGN KEY (workspaceID) REFERENCES workspaces (ID),
-    FOREIGN KEY (creatorID) REFERENCES users (ID)
+    FOREIGN KEY (workspaceID) REFERENCES workspaces (ID) ON DELETE CASCADE,
+    FOREIGN KEY (creatorID) REFERENCES users (ID) ON DELETE SET NULL
 );

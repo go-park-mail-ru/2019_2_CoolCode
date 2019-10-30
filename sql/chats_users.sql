@@ -5,8 +5,6 @@ CREATE TABLE chats_users
     chatID  BIGINT  NOT NULL,
     userID  BIGINT  NOT NULL,
 
-    FOREIGN KEY (userID) REFERENCES users (ID),
-    FOREIGN KEY (chatID) REFERENCES chats (ID)
-
-
+    FOREIGN KEY (userID) REFERENCES users (ID) ON DELETE CASCADE,
+    FOREIGN KEY (chatID) REFERENCES chats (ID) ON DELETE CASCADE
 );
