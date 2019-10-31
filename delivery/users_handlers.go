@@ -8,7 +8,6 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,11 +48,6 @@ func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
 	w.WriteHeader(status)
 
 	_, err = w.Write(body)
-
-	logrus.WithFields(logrus.Fields{
-		"error code": httpError.ResponseHeaders(),
-		"error body": httpError.ResponseBody(),
-	}).Error()
 
 	if err != nil {
 		log.Printf("An error occurred: %v", err)
@@ -173,7 +167,10 @@ func (handlers *UserHandlers) GetPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reader := bufio.NewReader(file)
-	bytes := make([]byte, 10<<20)
+	fileInfo, _ := file.Stat()
+	size := fileInfo.Size()
+
+	bytes := make([]byte, size)
 	_, err = reader.Read(bytes)
 
 	w.Header().Set("content-type", "multipart/form-data;boundary=1")

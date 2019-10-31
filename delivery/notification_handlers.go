@@ -6,7 +6,6 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"strconv"

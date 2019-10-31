@@ -7,7 +7,6 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"strconv"
