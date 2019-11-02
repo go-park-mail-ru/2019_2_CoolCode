@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestDBUserStore_GetUserByID(t *testing.T) {
+func TestDBUserStore_GetUserByID_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
@@ -26,15 +26,15 @@ func TestDBUserStore_GetUserByID(t *testing.T) {
 		rows = rows.AddRow(item.ID, item.Username, item.Email, item.Name, item.Password, item.Status, item.Phone)
 	}
 
-	// OK Query
+	repo := NewUserDBStore(db)
+
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
 		WithArgs(elemID).
 		WillReturnRows(rows)
 
-	repo := NewUserDBStore(db)
-
 	item, err := repo.GetUserByID(elemID)
+
 	if err != nil {
 		t.Errorf("unexpected err: %s", err)
 		return
@@ -47,8 +47,19 @@ func TestDBUserStore_GetUserByID(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", expect[0], item)
 		return
 	}
+}
 
-	// Query Error
+func TestDBUserStore_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	repo := NewUserDBStore(db)
+
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
 		WithArgs(elemID).
@@ -63,10 +74,21 @@ func TestDBUserStore_GetUserByID(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
+}
 
-	// row scan error
-	rows = sqlmock.NewRows([]string{"id", "username"}).
+func TestDBUserStore_GetUserByID_ScanError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	rows := sqlmock.NewRows([]string{"id", "username"}).
 		AddRow(1, "user1")
+
+	repo := NewUserDBStore(db)
 
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
@@ -84,7 +106,7 @@ func TestDBUserStore_GetUserByID(t *testing.T) {
 	}
 }
 
-func TestDBUserStore_GetUserByEmail(t *testing.T) {
+func TestDBUserStore_GetUserByEmail_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
@@ -102,15 +124,14 @@ func TestDBUserStore_GetUserByEmail(t *testing.T) {
 		rows = rows.AddRow(item.ID, item.Username, item.Email, item.Name, item.Password, item.Status, item.Phone)
 	}
 
-	// OK Query
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
 		WithArgs(elemEmail).
 		WillReturnRows(rows)
-
-	repo := &DBUserStore{
-		DB: db,
-	}
 
 	item, err := repo.GetUserByEmail(elemEmail)
 	if err != nil {
@@ -125,8 +146,21 @@ func TestDBUserStore_GetUserByEmail(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", expect[0], item)
 		return
 	}
+}
 
-	// Query Error
+func TestDBUserStore_GetUserByEmail_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemEmail string = "test@mail.ru"
+
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
 		WithArgs(elemEmail).
@@ -141,10 +175,23 @@ func TestDBUserStore_GetUserByEmail(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
+}
 
-	// Row Scan Error
-	rows = sqlmock.NewRows([]string{"id", "username"}).
+func TestDBUserStore_GetUserByEmail_ScanError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemEmail string = "test@mail.ru"
+
+	rows := sqlmock.NewRows([]string{"id", "username"}).
 		AddRow(1, "user1")
+
+	repo := &DBUserStore{
+		DB: db,
+	}
 
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users WHERE").
@@ -160,19 +207,14 @@ func TestDBUserStore_GetUserByEmail(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
-
 }
 
-func TestDBUserStore_PutUser(t *testing.T) {
+func TestDBUserStore_PutUser_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
 	}
 	defer db.Close()
-
-	repo := &DBUserStore{
-		DB: db,
-	}
 
 	testUser := &models.User{
 		Username: "test",
@@ -183,7 +225,10 @@ func TestDBUserStore_PutUser(t *testing.T) {
 		Phone:    "89991234567",
 	}
 
-	//OK Query
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery(`INSERT INTO users`).
 		WithArgs(testUser.Username, testUser.Email, testUser.Name, testUser.Password, testUser.Status, testUser.Phone).
@@ -194,23 +239,41 @@ func TestDBUserStore_PutUser(t *testing.T) {
 		t.Errorf("unexpected err: %s", err)
 		return
 	}
-
 	if id != 1 {
 		t.Errorf("bad id: want %v, have %v", id, 1)
 		return
 	}
-
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
+}
 
-	// Query Error
+func TestDBUserStore_PutUser_QueryError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	testUser := &models.User{
+		Username: "test",
+		Email:    "test@mail.ru",
+		Name:     "Name Lastname",
+		Password: "testpass",
+		Status:   "",
+		Phone:    "89991234567",
+	}
+
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery(`INSERT INTO users`).
 		WithArgs(testUser.Username, testUser.Email, testUser.Name, testUser.Password, testUser.Status, testUser.Phone).
 		WillReturnError(fmt.Errorf("bad query"))
 
-	id, err = repo.PutUser(testUser)
+	_, err = repo.PutUser(testUser)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 		return
@@ -220,16 +283,12 @@ func TestDBUserStore_PutUser(t *testing.T) {
 	}
 }
 
-func TestDBUserStore_Replace(t *testing.T) {
+func TestDBUserStore_Replace_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
 	}
 	defer db.Close()
-
-	repo := &DBUserStore{
-		DB: db,
-	}
 
 	var elemID uint64 = 1
 
@@ -257,7 +316,10 @@ func TestDBUserStore_Replace(t *testing.T) {
 		NewRows([]string{"id", "username", "email", "name", "password", "status", "phone"})
 	rows = rows.AddRow(testUser.ID, testUser.Username, testUser.Email, testUser.Name, testUser.Password, testUser.Status, testUser.Phone)
 
-	//OK Query
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectExec(`UPDATE users`).
 		WithArgs(testUserChanged.Username, testUserChanged.Email, testUserChanged.Name, testUserChanged.Password, testUserChanged.Status, testUser.Phone, elemID).
@@ -272,8 +334,31 @@ func TestDBUserStore_Replace(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
+}
 
-	// Query Error
+func TestDBUserStore_Replace_QueryError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	testUser := &models.User{
+		ID:       elemID,
+		Username: "test",
+		Email:    "test@mail.ru",
+		Name:     "Name Lastname",
+		Password: "testpass",
+		Status:   "",
+		Phone:    "89991234567",
+	}
+
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectExec(`UPDATE users`).
 		WithArgs(testUser.Username, testUser.Email, testUser.Name, testUser.Password, testUser.Status, testUser.Phone, elemID).
@@ -289,16 +374,12 @@ func TestDBUserStore_Replace(t *testing.T) {
 	}
 }
 
-func TestDBUserStore_Contains(t *testing.T) {
+func TestDBUserStore_Contains_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
 	}
 	defer db.Close()
-
-	repo := &DBUserStore{
-		DB: db,
-	}
 
 	testUser := &models.User{
 		ID:       1,
@@ -311,7 +392,10 @@ func TestDBUserStore_Contains(t *testing.T) {
 		NewRows([]string{"id", "username", "email", "password"})
 	rows = rows.AddRow(testUser.ID, testUser.Username, testUser.Email, testUser.Password)
 
-	// OK Query
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
 		WithArgs(testUser.Email, testUser.Username).
@@ -326,14 +410,32 @@ func TestDBUserStore_Contains(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", true, contains)
 		return
 	}
+}
 
-	// Query Error
+func TestDBUserStore_Contains_QueryError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	testUser := &models.User{
+		ID:       1,
+		Username: "test",
+		Email:    "test@mail.ru",
+		Password: "testpass",
+	}
+
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
 		WithArgs(testUser.Email, testUser.Username).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	contains = repo.Contains(*testUser)
+	contains := repo.Contains(*testUser)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
@@ -342,17 +444,35 @@ func TestDBUserStore_Contains(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
+}
 
-	// Row Scan Error
-	rows = sqlmock.NewRows([]string{"id", "username"}).
+func TestDBUserStore_Contains_ScanError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	testUser := &models.User{
+		ID:       1,
+		Username: "test",
+		Email:    "test@mail.ru",
+		Password: "testpass",
+	}
+
+	rows := sqlmock.NewRows([]string{"id", "username"}).
 		AddRow(1, "user1")
+
+	repo := &DBUserStore{
+		DB: db,
+	}
 
 	mock.
 		ExpectQuery("SELECT id, username, email, password FROM users WHERE").
 		WithArgs(testUser.Email, testUser.Username).
 		WillReturnRows(rows)
 
-	contains = repo.Contains(*testUser)
+	contains := repo.Contains(*testUser)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
@@ -361,10 +481,9 @@ func TestDBUserStore_Contains(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
-
 }
 
-func TestDBUserStore_GetUsers(t *testing.T) {
+func TestDBUserStore_GetUsers_Successful(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
@@ -382,14 +501,13 @@ func TestDBUserStore_GetUsers(t *testing.T) {
 		rows = rows.AddRow(item.ID, item.Username, item.Email, item.Name, item.Password, item.Status, item.Phone)
 	}
 
-	// OK Query
-	mock.
-		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users").
-		WillReturnRows(rows)
-
 	repo := &DBUserStore{
 		DB: db,
 	}
+
+	mock.
+		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users").
+		WillReturnRows(rows)
 
 	users, err := repo.GetUsers()
 	if err != nil {
@@ -404,8 +522,19 @@ func TestDBUserStore_GetUsers(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", expect[0], *(users.Users[0]))
 		return
 	}
+}
 
-	// Query Error
+func TestDBUserStore_GetUsers_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &DBUserStore{
+		DB: db,
+	}
+
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users").
 		WillReturnError(fmt.Errorf("db_error"))
@@ -419,10 +548,21 @@ func TestDBUserStore_GetUsers(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
+}
 
-	// Row Scan Error
-	rows = sqlmock.NewRows([]string{"id", "username"}).
+func TestDBUserStore_GetUsers_ScanError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"id", "username"}).
 		AddRow(1, "user1")
+
+	repo := &DBUserStore{
+		DB: db,
+	}
 
 	mock.
 		ExpectQuery("SELECT id, username, email, name, password, status, phone FROM users").
