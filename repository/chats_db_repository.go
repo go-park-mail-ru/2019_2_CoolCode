@@ -12,31 +12,6 @@ type ChatsDBRepository struct {
 	db *sql.DB
 }
 
-func (c *ChatsDBRepository) RemoveChat(chatID uint64) error {
-	tx, err := c.db.Begin()
-	defer tx.Rollback()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin transaction in RemoveChat: "+err.Error())
-	}
-	_, err = tx.Exec("DELETE FROM chats_users WHERE chatID=$1", chatID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete users_chats "+
-			"in RemoveChat transaction: "+err.Error())
-	}
-
-	_, err = tx.Exec("DELETE FROM chats WHERE id=$1", chatID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveChat: "+err.Error())
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit RemoveChat transaction "+err.Error())
-	}
-	return nil
-
-}
-
 func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspace, error) {
 	var result models.Workspace
 
@@ -307,26 +282,20 @@ func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) (int64, error) {
 	return result.RowsAffected()
 }
 
-func (c *ChatsDBRepository) RemoveChannel(channelID uint64) error {
-	tx, err := c.db.Begin()
+func (c *ChatsDBRepository) RemoveChannel(channelID uint64) (int64, error) {
+	result, err := c.db.Exec("DELETE FROM chats WHERE id=$1", channelID)
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin transaction in RemoveChannel: "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveChannel: "+err.Error())
 	}
-	_, err = tx.Exec("DELETE FROM chats WHERE id=$1", channelID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveChannel: "+err.Error())
-	}
-	_, err = tx.Exec("DELETE FROM chats_users WHERE chatid=$1", channelID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete users_chats "+
-			"in RemoveChannel transaction: "+err.Error())
-	}
+	return result.RowsAffected()
+}
 
-	err = tx.Commit()
+func (c *ChatsDBRepository) RemoveChat(chatID uint64) (int64, error) {
+	result, err := c.db.Exec("DELETE FROM chats WHERE id=$1", chatID)
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit RemoveChannel transaction "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveChat: "+err.Error())
 	}
-	return nil
+	return result.RowsAffected()
 }
 
 func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
