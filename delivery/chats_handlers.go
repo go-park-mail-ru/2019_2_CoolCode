@@ -93,7 +93,8 @@ func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 	}
-	jsonChat, err := json.Marshal(chats)
+	responseChats := models.ResponseChatsArray{Chats: chats}
+	jsonChat, err := json.Marshal(responseChats)
 	_, err = w.Write(jsonChat)
 }
 
