@@ -299,27 +299,12 @@ func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
 
 }
 
-func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) error {
-	tx, err := c.db.Begin()
-	defer tx.Rollback()
+func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) (int64, error) {
+	result, err := c.db.Exec("DELETE FROM workspaces WHERE id=$1", workspaceID)
 	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin transaction in RemoveWorkspace: "+err.Error())
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveWorkspace: "+err.Error())
 	}
-	_, err = tx.Exec("DELETE FROM workspaces_users WHERE workspaceid=$1", workspaceID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete users_workspaces "+
-			"in RemoveWorkspace transaction: "+err.Error())
-	}
-	_, err = tx.Exec("DELETE FROM workspaces WHERE id=$1", workspaceID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete chat in RemoveWorkspace: "+err.Error())
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit RemoveWorkspace transaction "+err.Error())
-	}
-	return nil
+	return result.RowsAffected()
 }
 
 func (c *ChatsDBRepository) RemoveChannel(channelID uint64) error {

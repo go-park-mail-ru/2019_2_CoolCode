@@ -16,7 +16,7 @@ type ChatsRepository interface {
 	UpdateWorkspace(workspace *models.Workspace) error
 	GetChannelByID(channelID uint64) (models.Channel, error)
 	UpdateChannel(channel *models.Channel) error
-	RemoveWorkspace(workspaceID uint64) error
+	RemoveWorkspace(workspaceID uint64) (int64, error)
 	RemoveChannel(channelID uint64) error
 	RemoveChat(chatID uint64) error
 }
