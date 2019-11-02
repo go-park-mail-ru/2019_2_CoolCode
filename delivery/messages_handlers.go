@@ -7,7 +7,6 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -24,43 +23,47 @@ type MessageHandlersImpl struct {
 	Users         useCase.UsersUseCase
 	Sessions      repository.SessionRepository
 	Notifications useCase.NotificationUseCase
+	utils         utils.HandlersUtils
 }
 
-func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseCase, sessions repository.SessionRepository, notificationUseCase useCase.NotificationUseCase) MessageHandlers {
+func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseCase,
+	sessions repository.SessionRepository, notificationUseCase useCase.NotificationUseCase, handlersUtils utils.HandlersUtils) MessageHandlers {
 	return &MessageHandlersImpl{
 		useCase:       useCase,
 		Users:         users,
 		Sessions:      sessions,
 		Notifications: notificationUseCase,
+		utils:         handlersUtils,
 	}
 }
 
 func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request) {
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 		return
 	}
 	message, err := parseMessage(r)
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
+		return
 	}
 	message.AuthorID = user.ID
 	message.ChatID = uint64(chatID)
 	id, err := m.useCase.SaveMessage(message)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 	}
 	jsonResponse, err := json.Marshal(map[string]uint64{
 		"id": id,
 	})
 	_, err = w.Write(jsonResponse)
 	if err != nil {
-		log.Printf("An error occurred %v", err)
+		m.utils.LogError(err, r)
 	}
 
 	//send to websocket
@@ -71,67 +74,71 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	}
 	websocketJson, err := json.Marshal(websocketMessage)
 	if err != nil {
-		log.Printf("An error occurred %v", err)
+		m.utils.LogError(err, r)
 	}
-	m.Notifications.SendMessage(message.ChatID, websocketJson)
+	err = m.Notifications.SendMessage(message.ChatID, websocketJson)
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
 
 }
 
 func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request) {
 	messageID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.LogError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 		return
 	}
 	message, err := parseMessage(r)
 
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
+		return
 	}
 	message.ID = uint64(messageID)
 
 	err = m.useCase.EditMessage(message, user.ID)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 	}
 }
 
 func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http.Request) {
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 		return
 	}
 	messages, err := m.useCase.GetChatMessages(uint64(chatID), user.ID)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 	}
 	jsonResponse, err := json.Marshal(messages)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 	}
 	_, err = w.Write(jsonResponse)
 	if err != nil {
-		log.Printf("An error occurred %v", err)
+		m.utils.LogError(err, r)
 	}
 }
 
 func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	messageID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		utils.SendError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w)
+		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 		return
 	}
 
@@ -143,7 +150,7 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err != nil {
-		utils.SendError(err, w)
+		m.utils.HandleError(err, w, r)
 	}
 }
 

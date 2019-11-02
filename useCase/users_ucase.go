@@ -24,7 +24,6 @@ type usersUseCase struct {
 func (u *usersUseCase) Login(loginUser models.User) (models.User, error) {
 	user, err := u.repository.GetUserByEmail(loginUser.Email)
 	if err != nil {
-		log.Println("Unregistered user", loginUser)
 		err = models.NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data")
 		return user, err
 	}
@@ -32,7 +31,6 @@ func (u *usersUseCase) Login(loginUser models.User) (models.User, error) {
 	if user.Password == loginUser.Password {
 		return user, nil
 	} else {
-		log.Println("Wrong password", user)
 		err = models.NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
 		return user, err
 	}
