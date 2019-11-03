@@ -57,6 +57,7 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	id, err := m.useCase.SaveMessage(message)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
+		return
 	}
 	jsonResponse, err := json.Marshal(map[string]uint64{
 		"id": id,
@@ -120,6 +121,7 @@ func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http
 	messages, err := m.useCase.GetChatMessages(uint64(chatID), user.ID)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
+		return
 	}
 	jsonResponse, err := json.Marshal(messages)
 	if err != nil {

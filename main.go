@@ -66,8 +66,8 @@ func main() {
 	notificationsUseCase := useCase.NewNotificationUseCase()
 	sessionRepository := repository.NewSessionRedisStore(redisConn)
 	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository, utils)
-	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase)
-	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase)
+	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase, utils)
+	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase, utils)
 	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase, utils)
 
 	corsMiddleware := handlers.CORS(

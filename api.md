@@ -388,11 +388,22 @@
 | ------------- | ----------------------------------------- |
 | `name`       | Название workspace. |
 
-Ответ:
-
+Тело ответа:
 ```json
 {
-  "id": "int"
+  "id": "int",
+  "name": "string",
+  "channels":  [{
+      "id": "int",
+      "name": "string",
+      "totalMsgCount": "int", 
+      "members": ["int"],
+      "admins": ["int"],
+      "creator": "int"
+  }], 
+  "members": ["int"],
+  "admins": ["int"],
+  "creator": "int"
 }
 ```
 
