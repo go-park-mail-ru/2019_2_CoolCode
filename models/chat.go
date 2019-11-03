@@ -8,7 +8,8 @@ type Chat struct {
 }
 
 type ResponseChatsArray struct {
-	Chats []Chat
+	Chats      []Chat
+	Workspaces []Workspace
 }
 
 func NewChatModel(Name string, ID1 uint64, ID2 uint64) *Chat {

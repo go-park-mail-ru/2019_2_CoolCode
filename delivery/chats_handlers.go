@@ -93,7 +93,11 @@ func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 	}
-	responseChats := models.ResponseChatsArray{Chats: chats}
+	workspaces, err := c.Chats.GetWorkspacesByUserID(uint64(requestedID))
+	if err != nil {
+
+	}
+	responseChats := models.ResponseChatsArray{Chats: chats, Workspaces: workspaces}
 	jsonChat, err := json.Marshal(responseChats)
 	_, err = w.Write(jsonChat)
 }
@@ -233,9 +237,8 @@ func (c *ChatHandlers) PostWorkspace(w http.ResponseWriter, r *http.Request) {
 		c.sendError(err, w)
 		return
 	}
-	jsonResponse, err := json.Marshal(map[string]uint64{
-		"id": id,
-	})
+	newWorkspace.ID = id
+	jsonResponse, err := json.Marshal(newWorkspace)
 	if err != nil {
 		c.sendError(err, w)
 		return

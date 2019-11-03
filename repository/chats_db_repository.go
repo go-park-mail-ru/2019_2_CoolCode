@@ -78,7 +78,7 @@ func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspa
 
 func (c *ChatsDBRepository) GetWorkspaces(userID uint64) ([]models.Workspace, error) {
 	var result []models.Workspace
-	rows, err := c.db.Query("SELECT workspaces_users FROM workspaces_users WHERE userid=$1", userID)
+	rows, err := c.db.Query("SELECT workspaceid FROM workspaces_users WHERE userid=$1", userID)
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "Can not get workspacesID in GetWorkspaces: "+err.Error())
 	}

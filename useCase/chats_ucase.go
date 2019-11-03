@@ -30,7 +30,7 @@ type chatsUseCase struct {
 	repository repository.ChatsRepository
 }
 
-func (c chatsUseCase) DeleteChat(userID uint64, chatID uint64) error {
+func (c *chatsUseCase) DeleteChat(userID uint64, chatID uint64) error {
 	deletingChat, err := c.repository.GetChatByID(chatID)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (c chatsUseCase) DeleteChat(userID uint64, chatID uint64) error {
 	return c.repository.RemoveChat(chatID)
 }
 
-func (c chatsUseCase) GetChannelByID(userID, ID uint64) (models.Channel, error) {
+func (c *chatsUseCase) GetChannelByID(userID, ID uint64) (models.Channel, error) {
 	channel, err := c.repository.GetChannelByID(ID)
 	if err != nil {
 		return channel, err
@@ -52,7 +52,7 @@ func (c chatsUseCase) GetChannelByID(userID, ID uint64) (models.Channel, error) 
 	return channel, nil
 }
 
-func (c chatsUseCase) GetWorkspaceByID(userID uint64, ID uint64) (models.Workspace, error) {
+func (c *chatsUseCase) GetWorkspaceByID(userID uint64, ID uint64) (models.Workspace, error) {
 	workspace, err := c.repository.GetWorkspaceByID(ID)
 	if err != nil {
 		return workspace, err
@@ -63,7 +63,7 @@ func (c chatsUseCase) GetWorkspaceByID(userID uint64, ID uint64) (models.Workspa
 	return workspace, nil
 }
 
-func (c chatsUseCase) GetWorkspacesByUserID(ID uint64) ([]models.Workspace, error) {
+func (c *chatsUseCase) GetWorkspacesByUserID(ID uint64) ([]models.Workspace, error) {
 	workspaces, err := c.repository.GetWorkspaces(ID)
 	var userWorkspaces []models.Workspace
 	if err != nil {
@@ -77,11 +77,11 @@ func (c chatsUseCase) GetWorkspacesByUserID(ID uint64) ([]models.Workspace, erro
 	return userWorkspaces, nil
 }
 
-func (c chatsUseCase) CreateWorkspace(workspace *models.Workspace) (uint64, error) {
+func (c *chatsUseCase) CreateWorkspace(workspace *models.Workspace) (uint64, error) {
 	return c.repository.PutWorkspace(workspace)
 }
 
-func (c chatsUseCase) CreateChannel(channel *models.Channel) (uint64, error) {
+func (c *chatsUseCase) CreateChannel(channel *models.Channel) (uint64, error) {
 	workspace, err := c.repository.GetWorkspaceByID(channel.WorkspaceID)
 	if err != nil {
 		return 0, err
@@ -93,7 +93,7 @@ func (c chatsUseCase) CreateChannel(channel *models.Channel) (uint64, error) {
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) EditWorkspace(userID uint64, workspace *models.Workspace) error {
+func (c *chatsUseCase) EditWorkspace(userID uint64, workspace *models.Workspace) error {
 	editWorkspace, err := c.repository.GetWorkspaceByID(workspace.ID)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (c chatsUseCase) EditWorkspace(userID uint64, workspace *models.Workspace) 
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) EditChannel(userID uint64, channel *models.Channel) error {
+func (c *chatsUseCase) EditChannel(userID uint64, channel *models.Channel) error {
 	editChannel, err := c.repository.GetChannelByID(channel.ID)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func (c chatsUseCase) EditChannel(userID uint64, channel *models.Channel) error 
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) LogoutFromWorkspace(userID uint64, workspaceID uint64) error {
+func (c *chatsUseCase) LogoutFromWorkspace(userID uint64, workspaceID uint64) error {
 	editWorkspace, err := c.repository.GetWorkspaceByID(workspaceID)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (c chatsUseCase) LogoutFromWorkspace(userID uint64, workspaceID uint64) err
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) LogoutFromChannel(userID uint64, channelID uint64) error {
+func (c *chatsUseCase) LogoutFromChannel(userID uint64, channelID uint64) error {
 	editChannel, err := c.repository.GetChannelByID(channelID)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (c chatsUseCase) LogoutFromChannel(userID uint64, channelID uint64) error {
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) DeleteWorkspace(userID uint64, workspaceID uint64) error {
+func (c *chatsUseCase) DeleteWorkspace(userID uint64, workspaceID uint64) error {
 	deleting, err := c.repository.GetWorkspaceByID(workspaceID)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func (c chatsUseCase) DeleteWorkspace(userID uint64, workspaceID uint64) error {
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) DeleteChannel(userID uint64, channelID uint64) error {
+func (c *chatsUseCase) DeleteChannel(userID uint64, channelID uint64) error {
 	deletingRoom, err := c.repository.GetChannelByID(channelID)
 	if err != nil {
 		return err
@@ -171,12 +171,12 @@ func (c chatsUseCase) DeleteChannel(userID uint64, channelID uint64) error {
 	//TODO: отправить уведомление всем открытм ws
 }
 
-func (c chatsUseCase) CheckChatPermission(userID uint64, chatID uint64) (bool, error) {
+func (c *chatsUseCase) CheckChatPermission(userID uint64, chatID uint64) (bool, error) {
 	_, err := c.GetChatByID(userID, chatID)
 	return err == nil, err //TODO: плохо
 }
 
-func (c chatsUseCase) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
+func (c *chatsUseCase) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 	chats, err := c.repository.GetChats(ID)
 	var userChats []models.Chat
 	if err != nil {
@@ -190,7 +190,7 @@ func (c chatsUseCase) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 	return userChats, nil
 }
 
-func (c chatsUseCase) GetChatByID(userID, ID uint64) (models.Chat, error) {
+func (c *chatsUseCase) GetChatByID(userID, ID uint64) (models.Chat, error) {
 	chat, err := c.repository.GetChatByID(ID)
 	if err != nil {
 		return chat, err
@@ -201,16 +201,16 @@ func (c chatsUseCase) GetChatByID(userID, ID uint64) (models.Chat, error) {
 	return chat, nil
 }
 
-func (c chatsUseCase) PutChat(Chat *models.Chat) (uint64, error) {
+func (c *chatsUseCase) PutChat(Chat *models.Chat) (uint64, error) {
 	return c.repository.PutChat(Chat)
 }
 
-func (c chatsUseCase) Contains(Chat models.Chat) error {
+func (c *chatsUseCase) Contains(Chat models.Chat) error {
 	return c.repository.Contains(Chat)
 }
 
 func NewChatsUseCase(repo repository.ChatsRepository) ChatsUseCase {
-	return chatsUseCase{
+	return &chatsUseCase{
 		repository: repo,
 	}
 }
