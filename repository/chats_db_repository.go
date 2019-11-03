@@ -21,13 +21,13 @@ func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspa
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetWorkspace: "+err.Error())
 	}
 
-	row := tx.QueryRow("SELECT id,name,creatorid FROM workspaces WHERE id=$1", workspaceID)
+	row := tx.QueryRow("SELECT id, name, creatorid FROM workspaces WHERE id=$1", workspaceID)
 
 	if err := row.Scan(&result.ID, &result.Name, &result.CreatorID); err != nil {
 		return result, models.NewClientError(err, http.StatusBadRequest, "workspace not exists: "+err.Error())
 	}
 
-	rows, err := tx.Query("SELECT userid,isadmin FROM workspaces_users WHERE workspaceid=$1", workspaceID)
+	rows, err := tx.Query("SELECT userid, isadmin FROM workspaces_users WHERE workspaceid=$1", workspaceID)
 
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetWorkspace: "+err.Error())
@@ -74,6 +74,146 @@ func (c *ChatsDBRepository) GetWorkspaces(userID uint64) ([]models.Workspace, er
 			return result, err
 		}
 		result = append(result, workspace)
+	}
+	return result, nil
+}
+
+func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
+	tx, err := c.db.Begin()
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin UpdateChannel transaction: "+err.Error())
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec("UPDATE chats SET  name = $1 WHERE id=$2", channel.Name, channel.ID)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not update UpdateChannel transaction: "+err.Error())
+	}
+
+	_, err = tx.Exec("DELETE FROM chats_users WHERE chatid=$1", channel.ID)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete in UpdateChannel transaction: "+err.Error())
+	}
+
+	sqlStr := "INSERT INTO chats_users (chatid, userid,isAdmin) VALUES "
+	var vals []interface{}
+	index := 1
+	for _, userID := range channel.Members {
+		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "," + "$" + strconv.Itoa(index+2) + "),"
+		index += 3
+		if contains(channel.Admins, userID) {
+			vals = append(vals, channel.ID, userID, true)
+		} else {
+			vals = append(vals, channel.ID, userID, false)
+		}
+	}
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	_, err = c.db.Exec(sqlStr, vals...)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not insert chats_users in "+
+			"UpdateChannel transaction: "+err.Error())
+	}
+	err = tx.Commit()
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateChannel transaction "+err.Error())
+	}
+	return nil
+
+}
+
+func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
+	var result models.Channel
+
+	tx, err := c.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChannel: "+err.Error())
+	}
+
+	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
+
+	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID); err != nil {
+		return result, models.NewClientError(err, http.StatusBadRequest, "channel not exists: "+err.Error())
+	}
+
+	rows, err := tx.Query("SELECT userid,isadmin FROM chats_users WHERE chatid=$1", channelID)
+
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChannel: "+err.Error())
+	}
+
+	for rows.Next() {
+		var userID uint64
+		var isAdmin bool
+		err = rows.Scan(&userID, &isAdmin)
+		if err != nil {
+			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId and isAdmin for GetChannel: "+err.Error())
+		}
+
+		result.Members = append(result.Members, userID)
+
+		if isAdmin {
+			result.Admins = append(result.Admins, userID)
+		}
+	}
+
+	return result, nil
+}
+
+func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
+	var result models.Chat
+
+	tx, err := c.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChat: "+err.Error())
+	}
+
+	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1 AND ischannel=false", ID)
+
+	err = row.Scan(&result.ID, &result.Name, &result.TotalMSGCount)
+	if err != nil {
+		return result, models.NewClientError(err, http.StatusBadRequest, "chat not exists: "+err.Error())
+	}
+
+	rows, err := tx.Query("SELECT userid FROM chats_users WHERE chatid=$1", ID)
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChat: "+err.Error())
+	}
+
+	for rows.Next() {
+		var userID uint64
+		err = rows.Scan(&userID)
+		if err != nil {
+			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChat: "+err.Error())
+		}
+		result.Members = append(result.Members, userID)
+	}
+
+	return result, nil
+}
+
+func (c *ChatsDBRepository) GetChats(userID uint64) ([]models.Chat, error) {
+	var result []models.Chat
+	rows, err := c.db.Query("SELECT chatid FROM chats_users WHERE userid=$1", userID)
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "Can not get chatsId in GetChats: "+err.Error())
+	}
+	if rows == nil {
+		return result, nil
+	}
+	chatsId := make([]uint64, 0)
+	for rows.Next() {
+		var id uint64
+		rows.Scan(&id)
+		if !contains(chatsId, id) {
+			chatsId = append(chatsId, id)
+		}
+	}
+	for _, id := range chatsId {
+		chat, err := c.GetChatByID(id)
+		if err == nil {
+			result = append(result, chat)
+		}
 	}
 	return result, nil
 }
@@ -190,7 +330,8 @@ func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
 		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin UpdateWorkspace transaction: "+err.Error())
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec("UPDATE workspaces SET  name = $1 WHERE id=$2", workspace.Name, workspace.ID)
+
+	_, err = tx.Exec("UPDATE workspaces SET name = $1 WHERE id=$2", workspace.Name, workspace.ID)
 	if err != nil {
 		return models.NewServerError(err, http.StatusInternalServerError, "Can not update UpdateWorkspace transaction: "+err.Error())
 	}
@@ -225,87 +366,6 @@ func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
 	return nil
 }
 
-func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
-	tx, err := c.db.Begin()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin UpdateChannel transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-	_, err = tx.Exec("UPDATE chats SET  name = $1 WHERE id=$2", channel.Name, channel.ID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not update UpdateChannel transaction: "+err.Error())
-	}
-
-	_, err = tx.Exec("DELETE FROM chats_users WHERE chatid=$1", channel.ID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete in UpdateChannel transaction: "+err.Error())
-	}
-
-	sqlStr := "INSERT INTO chats_users (chatid, userid,isAdmin) VALUES "
-	var vals []interface{}
-	index := 1
-	for _, userID := range channel.Members {
-		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "," + "$" + strconv.Itoa(index+2) + "),"
-		index += 3
-		if contains(channel.Admins, userID) {
-			vals = append(vals, channel.ID, userID, true)
-		} else {
-			vals = append(vals, channel.ID, userID, false)
-		}
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	_, err = c.db.Exec(sqlStr, vals...)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not insert chats_users in "+
-			"UpdateChannel transaction: "+err.Error())
-	}
-	err = tx.Commit()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateChannel transaction "+err.Error())
-	}
-	return nil
-
-}
-
-func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
-	var result models.Channel
-
-	tx, err := c.db.Begin()
-	defer tx.Rollback()
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChannel: "+err.Error())
-	}
-
-	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
-
-	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID); err != nil {
-		return result, models.NewClientError(err, http.StatusBadRequest, "channel not exists: "+err.Error())
-	}
-
-	rows, err := tx.Query("SELECT userid,isadmin FROM chats_users WHERE chatid=$1", channelID)
-
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChannel: "+err.Error())
-	}
-
-	for rows.Next() {
-		var userID uint64
-		var isAdmin bool
-		err = rows.Scan(&userID, &isAdmin)
-		if err != nil {
-			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId and isAdmin for GetChannel: "+err.Error())
-		}
-
-		result.Members = append(result.Members, userID)
-
-		if isAdmin {
-			result.Admins = append(result.Admins, userID)
-		}
-	}
-
-	return result, nil
-}
-
 func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) (int64, error) {
 	result, err := c.db.Exec("DELETE FROM workspaces WHERE id=$1", workspaceID)
 	if err != nil {
@@ -330,71 +390,9 @@ func (c *ChatsDBRepository) RemoveChat(chatID uint64) (int64, error) {
 	return result.RowsAffected()
 }
 
-func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
-	var result models.Chat
-
-	tx, err := c.db.Begin()
-	defer tx.Rollback()
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChat: "+err.Error())
-	}
-
-	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1 AND ischannel=false", ID)
-
-	err = row.Scan(&result.ID, &result.Name, &result.TotalMSGCount)
-	if err != nil {
-		return result, models.NewClientError(err, http.StatusBadRequest, "chat not exists: "+err.Error())
-	}
-
-	rows, err := tx.Query("SELECT userid FROM chats_users WHERE chatid=$1", ID)
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChat: "+err.Error())
-	}
-
-	for rows.Next() {
-		var userID uint64
-		err = rows.Scan(&userID)
-		if err != nil {
-			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChat: "+err.Error())
-		}
-		result.Members = append(result.Members, userID)
-	}
-
-	return result, nil
-}
-
+//FIXME
 func (c *ChatsDBRepository) Contains(Chat models.Chat) error {
 	panic("implement me")
-}
-
-func (c *ChatsDBRepository) GetChats(userID uint64) ([]models.Chat, error) {
-	var result []models.Chat
-	rows, err := c.db.Query("SELECT chatid FROM chats_users WHERE userid=$1", userID)
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "Can not get chatsId in GetChats: "+err.Error())
-	}
-	if rows == nil {
-		return result, nil
-	}
-	chatsId := make([]uint64, 0)
-	for rows.Next() {
-		var id uint64
-		rows.Scan(&id)
-		if !contains(chatsId, id) {
-			chatsId = append(chatsId, id)
-		}
-	}
-	for _, id := range chatsId {
-		chat, err := c.GetChatByID(id)
-		if err == nil {
-			result = append(result, chat)
-		}
-	}
-	return result, nil
-}
-
-func NewChatsDBRepository(db *sql.DB) ChatsRepository {
-	return &ChatsDBRepository{db: db}
 }
 
 func contains(s []uint64, e uint64) bool {
@@ -404,4 +402,8 @@ func contains(s []uint64, e uint64) bool {
 		}
 	}
 	return false
+}
+
+func NewChatsDBRepository(db *sql.DB) ChatsRepository {
+	return &ChatsDBRepository{db: db}
 }

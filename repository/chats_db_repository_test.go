@@ -17,9 +17,7 @@ func TestChatsDBRepository_RemoveWorkspace_Successful(t *testing.T) {
 	}
 	defer db.Close()
 
-	repo := &ChatsDBRepository{
-		db: db,
-	}
+	repo := NewChatsDBRepository(db)
 
 	testWorkspace := &models.Workspace{
 		Name:      "TestWorkspace",
@@ -37,7 +35,7 @@ func TestChatsDBRepository_RemoveWorkspace_Successful(t *testing.T) {
 	mock.
 		ExpectExec("DELETE FROM workspaces WHERE").
 		WithArgs(elemID).
-		WillReturnResult(sqlmock.NewResult(5, 1))
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	rowsAffected, err := repo.RemoveWorkspace(elemID)
 	if err != nil {
@@ -821,6 +819,326 @@ func TestChatsDBRepository_PutChat_CommitConnError(t *testing.T) {
 		WillReturnError(sql.ErrConnDone)
 
 	_, err = repo.PutChat(testChat)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+// UpdateWorkspace
+
+func TestChatsDBRepository_UpdateWorkspace_Success(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	/*	delRows := sqlmock.
+			NewRows([]string{"workspaceID", "userID", "isAdmin"})
+		for _, user := range testWorkspace.Members {
+			isAdmin := false
+			for _, admin := range testWorkspace.Admins {
+				if admin == user {
+					isAdmin = true
+				}
+			}
+			delRows = delRows.AddRow(testWorkspace.ID, user, isAdmin)
+		}*/
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(`UPDATE workspaces`).
+		WithArgs(testWorkspaceUpdated.Name, elemID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM workspaces_users`).
+		WithArgs(elemID).
+		WillReturnResult(sqlmock.NewResult(2, 2))
+	mock.ExpectExec(`INSERT INTO workspaces_users`).
+		WithArgs(1, 1, true, 1, 2, false, 1, 3, true).
+		WillReturnResult(sqlmock.NewResult(3, 3))
+	mock.ExpectCommit()
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestChatsDBRepository_UpdateWorkspace_BeginConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	mock.ExpectBegin().
+		WillReturnError(sql.ErrConnDone)
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestChatsDBRepository_UpdateWorkspace_FirstQueryConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(`UPDATE workspaces`).
+		WithArgs(testWorkspaceUpdated.Name, elemID).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestChatsDBRepository_UpdateWorkspace_SecondQueryConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(`UPDATE workspaces`).
+		WithArgs(testWorkspaceUpdated.Name, elemID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM workspaces_users`).
+		WithArgs(elemID).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestChatsDBRepository_UpdateWorkspace_ThirdQueryConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(`UPDATE workspaces`).
+		WithArgs(testWorkspaceUpdated.Name, elemID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM workspaces_users`).
+		WithArgs(elemID).
+		WillReturnResult(sqlmock.NewResult(2, 2))
+	mock.ExpectExec(`INSERT INTO workspaces_users`).
+		WithArgs(1, 1, true, 1, 2, false, 1, 3, true).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestChatsDBRepository_UpdateWorkspace_CommitConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	var elemID uint64 = 1
+
+	testWorkspace := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspace",
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+
+	repo.PutWorkspace(testWorkspace)
+
+	testWorkspaceUpdated := &models.Workspace{
+		ID:        elemID,
+		Name:      "TestWorkspaceUpdated",
+		Members:   []uint64{1, 2, 3},
+		Admins:    []uint64{1, 3},
+		CreatorID: 1,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectExec(`UPDATE workspaces`).
+		WithArgs(testWorkspaceUpdated.Name, elemID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM workspaces_users`).
+		WithArgs(elemID).
+		WillReturnResult(sqlmock.NewResult(2, 2))
+	mock.ExpectExec(`INSERT INTO workspaces_users`).
+		WithArgs(1, 1, true, 1, 2, false, 1, 3, true).
+		WillReturnResult(sqlmock.NewResult(3, 3))
+	mock.ExpectCommit().
+		WillReturnError(sql.ErrConnDone)
+
+	err = repo.UpdateWorkspace(testWorkspaceUpdated)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 		return
