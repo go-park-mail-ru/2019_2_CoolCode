@@ -4,9 +4,9 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
+	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -16,14 +16,17 @@ type NotificationHandlers struct {
 	chatsUseCase        useCase.ChatsUseCase
 	Users               useCase.UsersUseCase
 	Sessions            repository.SessionRepository
+	utils               utils.HandlersUtils
 }
 
-func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository, chats useCase.ChatsUseCase, notifications useCase.NotificationUseCase) NotificationHandlers {
+func NewNotificationHandlers(users useCase.UsersUseCase, sessions repository.SessionRepository,
+	chats useCase.ChatsUseCase, notifications useCase.NotificationUseCase, utils utils.HandlersUtils) NotificationHandlers {
 	return NotificationHandlers{
 		notificationUseCase: notifications,
 		chatsUseCase:        chats,
 		Users:               users,
 		Sessions:            sessions,
+		utils:               utils,
 	}
 }
 
@@ -36,29 +39,30 @@ var upgrader = websocket.Upgrader{
 func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		h.utils.HandleError(models.NewServerError(err, http.StatusBadRequest, "Can not upgrade connection"), w, r)
 		return
 	}
 	sessionID, _ := r.Cookie("session_id")
 
 	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
+		h.utils.LogError(err, r)
 	}
 
 	userID, err := h.parseCookie(sessionID)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		h.utils.HandleError(err, w, r)
 		return
 	}
 	//Проверяем доступ к чату
 	ok, err := h.chatsUseCase.CheckChatPermission(userID, uint64(requestedID))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		h.utils.HandleError(err, w, r)
 		return
 	}
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
+		h.utils.HandleError(models.NewClientError(nil, http.StatusForbidden, "Not permission to chat:("),
+			w, r)
 		return
 	}
 	//Достаем Handler с помощью useCase

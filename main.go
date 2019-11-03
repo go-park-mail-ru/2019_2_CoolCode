@@ -8,6 +8,7 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/middleware"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
+	utils2 "github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -37,7 +38,7 @@ var (
 func main() {
 
 	logrusLogger := logrus.New()
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	utils := utils2.NewHandlersUtils(logrusLogger)
 	//init dbConn
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
 		DB_USER, DB_PASSWORD, DB_NAME)
@@ -64,10 +65,10 @@ func main() {
 	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
 	notificationsUseCase := useCase.NewNotificationUseCase()
 	sessionRepository := repository.NewSessionRedisStore(redisConn)
-	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository)
+	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository, utils)
 	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase)
 	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase)
-	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase)
+	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase, utils)
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com", "http://localhost:3000"}),
