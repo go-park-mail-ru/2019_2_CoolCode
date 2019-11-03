@@ -112,6 +112,7 @@ func (c *ChatHandlers) GetChatById(w http.ResponseWriter, r *http.Request) {
 	chat, err := c.Chats.GetChatByID(user.ID, uint64(requestedID))
 	if err != nil {
 		c.sendError(err, w)
+		return
 	}
 	jsonChat, err := json.Marshal(chat)
 	_, err = w.Write(jsonChat)
