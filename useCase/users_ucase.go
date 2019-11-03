@@ -3,6 +3,7 @@ package useCase
 import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"strings"
@@ -28,7 +29,7 @@ func (u *usersUseCase) Login(loginUser models.User) (models.User, error) {
 		return user, err
 	}
 
-	if user.Password == loginUser.Password {
+	if comparePasswords(user.Password, loginUser.Password) {
 		return user, nil
 	} else {
 		err = models.NewClientError(nil, http.StatusBadRequest, "Bad request: wrong password")
@@ -66,6 +67,7 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 		if newUser.Name == "" {
 			newUser.Name = "John Doe"
 		}
+		newUser.Password = hashAndSalt(newUser.Password)
 		_, err := u.repository.PutUser(newUser)
 		if err != nil { // return 500 Internal Server Error.
 			log.Printf("An error occurred: %v", err)
@@ -116,4 +118,23 @@ func (u *usersUseCase) FindUsers(name string) (models.Users, error) {
 
 func (u *usersUseCase) Valid(user models.User) bool {
 	return user.Email != ""
+}
+
+func comparePasswords(hashedPassword string, plainPassword string) bool {
+	byteHash := []byte(hashedPassword)
+	err := bcrypt.CompareHashAndPassword(byteHash, []byte(plainPassword))
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	return true
+}
+
+func hashAndSalt(pwd string) string {
+	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.MinCost)
+	if err != nil {
+		log.Println(err)
+	}
+	return string(hash)
 }
