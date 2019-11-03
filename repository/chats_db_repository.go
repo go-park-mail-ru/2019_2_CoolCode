@@ -126,7 +126,7 @@ func (c *ChatsDBRepository) PutChannel(channel *models.Channel) (uint64, error) 
 		true, channel.TotalMSGCount, channel.Name, channel.WorkspaceID, channel.CreatorID).Scan(&channelID)
 
 	//INSERT INTO chats_users
-	sqlStr := "INSERT INTO chats_users (chatid, userid,isAdmin) VALUES "
+	sqlStr := "INSERT INTO chats_users (chatid, userid, isAdmin) VALUES "
 	var vals []interface{}
 	index := 1
 	for _, userID := range channel.Members {
@@ -149,6 +149,39 @@ func (c *ChatsDBRepository) PutChannel(channel *models.Channel) (uint64, error) 
 		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChannel transaction "+err.Error())
 	}
 	return channelID, nil
+}
+
+func (c *ChatsDBRepository) PutChat(Chat *models.Chat) (uint64, error) {
+	var chatID uint64
+	tx, err := c.db.Begin()
+	if err != nil {
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChat transaction "+err.Error())
+	}
+
+	defer tx.Rollback()
+
+	_ = c.db.QueryRow("INSERT INTO chats (ischannel, totalmsgcount, name) VALUES ($1,$2,$3) RETURNING id",
+		false, Chat.TotalMSGCount, Chat.Name).Scan(&chatID)
+
+	//chats_users INSERT
+	sqlStr := "INSERT INTO chats_users (chatid, userid) VALUES "
+	var vals []interface{}
+	index := 1
+	for _, userID := range Chat.Members {
+		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "),"
+		index += 2
+		vals = append(vals, chatID, userID)
+	}
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	_, err = c.db.Exec(sqlStr, vals...)
+	if err != nil {
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Put chat error "+err.Error())
+	}
+	err = tx.Commit()
+	if err != nil {
+		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
+	}
+	return chatID, nil
 }
 
 func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
@@ -190,46 +223,6 @@ func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
 		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateWorkspace transaction "+err.Error())
 	}
 	return nil
-
-}
-
-func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
-	var result models.Channel
-
-	tx, err := c.db.Begin()
-	defer tx.Rollback()
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChannel: "+err.Error())
-	}
-
-	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
-
-	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID); err != nil {
-		return result, models.NewClientError(err, http.StatusBadRequest, "channel not exists: "+err.Error())
-	}
-
-	rows, err := tx.Query("SELECT userid,isadmin FROM chats_users WHERE chatid=$1", channelID)
-
-	if err != nil {
-		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChannel: "+err.Error())
-	}
-
-	for rows.Next() {
-		var userID uint64
-		var isAdmin bool
-		err = rows.Scan(&userID, &isAdmin)
-		if err != nil {
-			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId and isAdmin for GetChannel: "+err.Error())
-		}
-
-		result.Members = append(result.Members, userID)
-
-		if isAdmin {
-			result.Admins = append(result.Admins, userID)
-		}
-	}
-
-	return result, nil
 }
 
 func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
@@ -272,6 +265,45 @@ func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
 	}
 	return nil
 
+}
+
+func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
+	var result models.Channel
+
+	tx, err := c.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChannel: "+err.Error())
+	}
+
+	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
+
+	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID); err != nil {
+		return result, models.NewClientError(err, http.StatusBadRequest, "channel not exists: "+err.Error())
+	}
+
+	rows, err := tx.Query("SELECT userid,isadmin FROM chats_users WHERE chatid=$1", channelID)
+
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId for GetChannel: "+err.Error())
+	}
+
+	for rows.Next() {
+		var userID uint64
+		var isAdmin bool
+		err = rows.Scan(&userID, &isAdmin)
+		if err != nil {
+			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get userId and isAdmin for GetChannel: "+err.Error())
+		}
+
+		result.Members = append(result.Members, userID)
+
+		if isAdmin {
+			result.Admins = append(result.Admins, userID)
+		}
+	}
+
+	return result, nil
 }
 
 func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) (int64, error) {
@@ -329,40 +361,6 @@ func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	}
 
 	return result, nil
-}
-
-func (c *ChatsDBRepository) PutChat(Chat *models.Chat) (uint64, error) {
-	var chatID uint64
-	tx, err := c.db.Begin()
-	if err != nil {
-		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChat transaction "+err.Error())
-	}
-
-	defer tx.Rollback()
-
-	_ = c.db.QueryRow("INSERT INTO chats (ischannel, totalmsgcount, name) VALUES ($1,$2,$3) RETURNING id",
-		false, Chat.TotalMSGCount, Chat.Name).Scan(&chatID)
-
-	//chats_users INSERT
-	sqlStr := "INSERT INTO chats_users (chatid, userid) VALUES "
-	var vals []interface{}
-	index := 1
-	for _, userID := range Chat.Members {
-		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "),"
-		index += 2
-		vals = append(vals, chatID, userID)
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	_, err = c.db.Exec(sqlStr, vals...)
-	if err != nil {
-		return 0, models.NewServerError(err, http.StatusInternalServerError, "Put chat error "+err.Error())
-	}
-	err = tx.Commit()
-	if err != nil {
-		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not commit PutChat transaction "+err.Error())
-	}
-	return chatID, nil
-
 }
 
 func (c *ChatsDBRepository) Contains(Chat models.Chat) error {
