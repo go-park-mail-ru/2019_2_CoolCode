@@ -198,7 +198,8 @@ func (c *ChatsUseCaseImpl) DeleteChannel(userID uint64, channelID uint64) error 
 	if userID != deletingRoom.CreatorID {
 		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
-	return c.repository.RemoveChannel(channelID)
+	_, err = c.repository.RemoveChannel(channelID)
+	return err
 	//TODO: отправить уведомление всем открытм ws
 }
 

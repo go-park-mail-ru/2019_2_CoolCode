@@ -99,7 +99,7 @@ func TestChatsDBRepository_RemoveChat_Successful(t *testing.T) {
 	}
 	defer db.Close()
 
-	testWorkspace := &models.Chat{
+	testChat := &models.Chat{
 		Name:          "TestChat",
 		Members:       []uint64{1, 2},
 		TotalMSGCount: 5,
@@ -109,7 +109,7 @@ func TestChatsDBRepository_RemoveChat_Successful(t *testing.T) {
 
 	rows := sqlmock.
 		NewRows([]string{"id", "name", "totalMSGCount"})
-	rows = rows.AddRow(elemID, testWorkspace.Name, testWorkspace.TotalMSGCount)
+	rows = rows.AddRow(elemID, testChat.Name, testChat.TotalMSGCount)
 
 	repo := &ChatsDBRepository{
 		db: db,
@@ -142,7 +142,7 @@ func TestChatsDBRepository_RemoveChat_DBError(t *testing.T) {
 	}
 	defer db.Close()
 
-	testWorkspace := &models.Chat{
+	testChat := &models.Chat{
 		Name:          "TestChat",
 		Members:       []uint64{1, 2},
 		TotalMSGCount: 5,
@@ -152,7 +152,7 @@ func TestChatsDBRepository_RemoveChat_DBError(t *testing.T) {
 
 	rows := sqlmock.
 		NewRows([]string{"id", "name", "totalMSGCount"})
-	rows = rows.AddRow(elemID, testWorkspace.Name, testWorkspace.TotalMSGCount)
+	rows = rows.AddRow(elemID, testChat.Name, testChat.TotalMSGCount)
 
 	repo := &ChatsDBRepository{
 		db: db,
@@ -164,6 +164,91 @@ func TestChatsDBRepository_RemoveChat_DBError(t *testing.T) {
 		WillReturnError(fmt.Errorf("db_error"))
 
 	_, err = repo.RemoveChat(elemID)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestChatsDBRepository_RemoveChannel_Successful(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	testChannel := &models.Channel{
+		Name:          "TestChannel",
+		TotalMSGCount: 5,
+		Members:       []uint64{1, 2},
+		Admins:        []uint64{1},
+		WorkspaceID:   1,
+		CreatorID:     1,
+	}
+
+	var elemID uint64 = 1
+
+	rows := sqlmock.
+		NewRows([]string{"id", "name", "totalMSGCount", "workspaceID", "creatorID"})
+	rows = rows.AddRow(elemID, testChannel.Name, testChannel.TotalMSGCount, testChannel.WorkspaceID, testChannel.CreatorID)
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.
+		ExpectExec("DELETE FROM chats WHERE").
+		WithArgs(elemID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	rowsAffected, err := repo.RemoveChannel(elemID)
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if rowsAffected != 1 {
+		t.Errorf("unexpected rowsAffected count: %v", rowsAffected)
+		return
+	}
+}
+
+func TestChatsDBRepository_RemoveChannel_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	testChannel := &models.Channel{
+		Name:          "TestChannel",
+		Members:       []uint64{1, 2},
+		TotalMSGCount: 5,
+	}
+
+	var elemID uint64 = 1
+
+	rows := sqlmock.
+		NewRows([]string{"id", "name", "totalMSGCount"})
+	rows = rows.AddRow(elemID, testChannel.Name, testChannel.TotalMSGCount)
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.
+		ExpectExec("DELETE FROM chats WHERE").
+		WithArgs(elemID).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	_, err = repo.RemoveChannel(elemID)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
