@@ -33,61 +33,6 @@ func NewUsersHandlers(users useCase.UsersUseCase, sessions repository.SessionRep
 	}
 }
 
-//func (handlers *UserHandlers) sendError(err error, w http.ResponseWriter) {
-//	httpError, ok := err.(models.HTTPError)
-//	if !ok {
-//		w.WriteHeader(500) // return 500 Internal Server Error.
-//		return
-//	}
-//
-//	body, err := httpError.ResponseBody() // Try to get response body of ClientError.
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(500)
-//		return
-//	}
-//	status, headers := httpError.ResponseHeaders() // GetUserByEmail http status code and headers.
-//	for k, v := range headers {
-//		w.Header().Set(k, v)
-//	}
-//	w.WriteHeader(status)
-//
-//	_, err = w.Write(body)
-//
-//	if err != nil {
-//		log.Printf("An error occurred: %v", err)
-//		w.WriteHeader(500)
-//		return
-//	}
-//}
-//
-//func (hanlers *UserHandlers) logError(err error, r *http.Request) {
-//	httpError, ok := err.(models.HTTPError)
-//	if !ok {
-//		hanlers.log.WithFields(logrus.Fields{
-//			"method":      r.Method,
-//			"remote_addr": r.RemoteAddr,
-//			"err":         err.Error(),
-//		}).Error("Internal server error")
-//		return
-//	}
-//	body, err := httpError.ResponseBody() // Try to get response body of ClientError.
-//	if err != nil {
-//		hanlers.log.WithFields(logrus.Fields{
-//			"method":      r.Method,
-//			"remote_addr": r.RemoteAddr,
-//			"err":         err.Error(),
-//		}).Error("Internal server error")
-//		return
-//	}
-//
-//	hanlers.log.WithFields(logrus.Fields{
-//		"method":      r.Method,
-//		"remote_addr": r.RemoteAddr,
-//	}).Error(string(body))
-//
-//}
-
 func (handlers *UserHandlers) SignUp(w http.ResponseWriter, r *http.Request) {
 	var newUser models.User
 	body := r.Body
@@ -115,11 +60,13 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
 		handlers.utils.HandleError(err, w, r)
+		return
 	}
 
 	user, err := handlers.Users.Login(loginUser)
 	if err != nil {
 		handlers.utils.HandleError(err, w, r)
+		return
 	} else {
 		token := uuid.New()
 		expiration := time.Now().Add(365 * 24 * time.Hour)
@@ -153,7 +100,7 @@ func (handlers *UserHandlers) SavePhoto(w http.ResponseWriter, r *http.Request) 
 
 	user, err := handlers.parseCookie(sessionID)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		handlers.utils.HandleError(err, w, r)
 		return
 	}
 	id := strconv.Itoa(int(user.ID))
@@ -212,7 +159,7 @@ func (handlers *UserHandlers) GetPhoto(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (handlers UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
+func (handlers *UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	sessionID, _ := r.Cookie("session_id")
 
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
@@ -220,15 +167,13 @@ func (handlers UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	loggedIn := err == nil
 
 	if !loggedIn {
-		err = models.NewClientError(nil, http.StatusUnauthorized, "Bad request : unauthorized:(")
 		handlers.utils.HandleError(err, w, r)
 		return
 	}
-	if requestedID != 0 {
-		user, err = handlers.Users.GetUserByID(uint64(requestedID))
-	}
+
+	user, err = handlers.Users.GetUserByID(uint64(requestedID))
+
 	if err != nil {
-		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid ID.")
 		handlers.utils.HandleError(err, w, r)
 	}
 
@@ -326,11 +271,14 @@ func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
 	id, err := handlers.Sessions.GetID(cookie.Value)
+	if err != nil {
+		return models.User{}, models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:(")
+	}
 	user, err := handlers.Users.GetUserByID(id)
 	if err == nil {
 		return user, nil
 	} else {
-		return user, models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:(")
+		return user, err
 	}
 }
 

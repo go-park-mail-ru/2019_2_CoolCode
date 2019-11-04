@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+//go:generate moq -out users_ucase_mock.go . UsersUseCase
 type UsersUseCase interface {
 	GetUserByID(id uint64) (models.User, error)
 	GetUserByEmail(email string) (models.User, error)
