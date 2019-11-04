@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
+	"reflect"
 	"testing"
 )
 
@@ -1258,5 +1259,282 @@ func TestChatsDBRepository_UpdateChannel_CommitConnError(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+// GetWorkspaceByID ====================================================================================================
+
+func TestChatsDBRepository_GetWorkspaceByID_Successful(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	workspaceRows := sqlmock.
+		NewRows([]string{"id", "name", "creatorID"})
+	workspacesUsersRows := sqlmock.
+		NewRows([]string{"userID", "isAdmin"})
+	expectWorkspace := models.Workspace{
+		ID:        elemID,
+		Name:      "testWorkspace",
+		Channels:  []*models.Channel(nil),
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+	workspaceRows = workspaceRows.AddRow(expectWorkspace.ID, expectWorkspace.Name, expectWorkspace.CreatorID)
+	for _, user := range expectWorkspace.Members {
+		isAdmin := false
+		for _, admin := range expectWorkspace.Admins {
+			if user == admin {
+				isAdmin = true
+			}
+		}
+		workspacesUsersRows = workspacesUsersRows.AddRow(user, isAdmin)
+	}
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery("SELECT id, name, creatorid FROM workspaces WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspaceRows)
+	mock.
+		ExpectQuery("SELECT userid, isadmin FROM workspaces_users WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspacesUsersRows)
+
+	item, err := repo.GetWorkspaceByID(elemID)
+
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if !reflect.DeepEqual(item, expectWorkspace) {
+		t.Errorf("results not match, want %#v, have %#v", expectWorkspace, item)
+		return
+	}
+}
+
+func TestChatsDBRepository_GetWorkspaceByID_DBErrorFirst(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery("SELECT id, name, creatorid FROM workspaces WHERE").
+		WithArgs(elemID).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	_, err = repo.GetWorkspaceByID(elemID)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestChatsDBRepository_GetWorkspaceByID_DBErrorSecond(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	workspaceRows := sqlmock.
+		NewRows([]string{"id", "name", "creatorID"})
+
+	expectWorkspace := models.Workspace{
+		ID:        elemID,
+		Name:      "testWorkspace",
+		Channels:  []*models.Channel(nil),
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+	workspaceRows = workspaceRows.AddRow(expectWorkspace.ID, expectWorkspace.Name, expectWorkspace.CreatorID)
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery("SELECT id, name, creatorid FROM workspaces WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspaceRows)
+	mock.
+		ExpectQuery("SELECT userid, isadmin FROM workspaces_users WHERE").
+		WithArgs(elemID).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	_, err = repo.GetWorkspaceByID(elemID)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestChatsDBRepository_GetWorkspaceByID_ScanErrorFirst(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	workspaceRows := sqlmock.
+		NewRows([]string{"id", "name"})
+	workspacesUsersRows := sqlmock.
+		NewRows([]string{"userID", "isAdmin"})
+	expectWorkspace := models.Workspace{
+		ID:        elemID,
+		Name:      "testWorkspace",
+		Channels:  []*models.Channel(nil),
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+	workspaceRows = workspaceRows.AddRow(expectWorkspace.ID, expectWorkspace.Name)
+	for _, user := range expectWorkspace.Members {
+		isAdmin := false
+		for _, admin := range expectWorkspace.Admins {
+			if user == admin {
+				isAdmin = true
+			}
+		}
+		workspacesUsersRows = workspacesUsersRows.AddRow(user, isAdmin)
+	}
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery("SELECT id, name, creatorid FROM workspaces WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspaceRows)
+
+	_, err = repo.GetWorkspaceByID(elemID)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestChatsDBRepository_GetWorkspaceByID_ScanErrorSecond(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	workspaceRows := sqlmock.
+		NewRows([]string{"id", "name", "creatorID"})
+	workspacesUsersRows := sqlmock.
+		NewRows([]string{"userID"})
+	expectWorkspace := models.Workspace{
+		ID:        elemID,
+		Name:      "testWorkspace",
+		Channels:  []*models.Channel(nil),
+		Members:   []uint64{1, 2},
+		Admins:    []uint64{1},
+		CreatorID: 1,
+	}
+	workspaceRows = workspaceRows.AddRow(expectWorkspace.ID, expectWorkspace.Name, expectWorkspace.CreatorID)
+	for _, user := range expectWorkspace.Members {
+		workspacesUsersRows = workspacesUsersRows.AddRow(user)
+	}
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin()
+	mock.
+		ExpectQuery("SELECT id, name, creatorid FROM workspaces WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspaceRows)
+	mock.
+		ExpectQuery("SELECT userid, isadmin FROM workspaces_users WHERE").
+		WithArgs(elemID).
+		WillReturnRows(workspacesUsersRows)
+
+	_, err = repo.GetWorkspaceByID(elemID)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestChatsDBRepository_GetWorkspaceByID_BeginConnError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	var elemID uint64 = 1
+
+	repo := &ChatsDBRepository{
+		db: db,
+	}
+
+	mock.ExpectBegin().
+		WillReturnError(sql.ErrConnDone)
+
+	_, err = repo.GetWorkspaceByID(elemID)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
 	}
 }

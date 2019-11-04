@@ -16,10 +16,10 @@ func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspa
 	var result models.Workspace
 
 	tx, err := c.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetWorkspace: "+err.Error())
 	}
+	defer tx.Rollback()
 
 	row := tx.QueryRow("SELECT id, name, creatorid FROM workspaces WHERE id=$1", workspaceID)
 
@@ -82,10 +82,10 @@ func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, er
 	var result models.Channel
 
 	tx, err := c.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChannel: "+err.Error())
 	}
+	defer tx.Rollback()
 
 	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
 
@@ -121,10 +121,10 @@ func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	var result models.Chat
 
 	tx, err := c.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetChat: "+err.Error())
 	}
+	defer tx.Rollback()
 
 	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1 AND ischannel=false", ID)
 
@@ -182,7 +182,6 @@ func (c *ChatsDBRepository) PutWorkspace(workspace *models.Workspace) (uint64, e
 	if err != nil {
 		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutWorkspace transaction "+err.Error())
 	}
-
 	defer tx.Rollback()
 
 	_ = c.db.QueryRow("INSERT INTO workspaces (name, creatorid) VALUES ($1,$2) RETURNING id", workspace.Name, workspace.CreatorID).Scan(&workspaceID)
@@ -218,8 +217,8 @@ func (c *ChatsDBRepository) PutChannel(channel *models.Channel) (uint64, error) 
 	if err != nil {
 		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChannel transaction "+err.Error())
 	}
-
 	defer tx.Rollback()
+
 	_ = c.db.QueryRow("INSERT INTO chats (ischannel, totalmsgcount, name, workspaceid, creatorid) VALUES ($1,$2,$3,$4,$5) RETURNING id",
 		true, channel.TotalMSGCount, channel.Name, channel.WorkspaceID, channel.CreatorID).Scan(&channelID)
 
@@ -255,7 +254,6 @@ func (c *ChatsDBRepository) PutChat(Chat *models.Chat) (uint64, error) {
 	if err != nil {
 		return 0, models.NewServerError(err, http.StatusInternalServerError, "Can not open PutChat transaction "+err.Error())
 	}
-
 	defer tx.Rollback()
 
 	_ = c.db.QueryRow("INSERT INTO chats (ischannel, totalmsgcount, name) VALUES ($1,$2,$3) RETURNING id",

@@ -49,7 +49,7 @@ func TestDBUserStore_GetUserByID_Successful(t *testing.T) {
 	}
 }
 
-func TestDBUserStore_DBError(t *testing.T) {
+func TestDBUserStore_GetUserByID_DBError(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("cant create mock: %s", err)
