@@ -78,48 +78,6 @@ func (c *ChatsDBRepository) GetWorkspaces(userID uint64) ([]models.Workspace, er
 	return result, nil
 }
 
-func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
-	tx, err := c.db.Begin()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin UpdateChannel transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-	_, err = tx.Exec("UPDATE chats SET  name = $1 WHERE id=$2", channel.Name, channel.ID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not update UpdateChannel transaction: "+err.Error())
-	}
-
-	_, err = tx.Exec("DELETE FROM chats_users WHERE chatid=$1", channel.ID)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete in UpdateChannel transaction: "+err.Error())
-	}
-
-	sqlStr := "INSERT INTO chats_users (chatid, userid,isAdmin) VALUES "
-	var vals []interface{}
-	index := 1
-	for _, userID := range channel.Members {
-		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "," + "$" + strconv.Itoa(index+2) + "),"
-		index += 3
-		if contains(channel.Admins, userID) {
-			vals = append(vals, channel.ID, userID, true)
-		} else {
-			vals = append(vals, channel.ID, userID, false)
-		}
-	}
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-	_, err = c.db.Exec(sqlStr, vals...)
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not insert chats_users in "+
-			"UpdateChannel transaction: "+err.Error())
-	}
-	err = tx.Commit()
-	if err != nil {
-		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateChannel transaction "+err.Error())
-	}
-	return nil
-
-}
-
 func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, error) {
 	var result models.Channel
 
@@ -364,6 +322,48 @@ func (c *ChatsDBRepository) UpdateWorkspace(workspace *models.Workspace) error {
 		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateWorkspace transaction "+err.Error())
 	}
 	return nil
+}
+
+func (c *ChatsDBRepository) UpdateChannel(channel *models.Channel) error {
+	tx, err := c.db.Begin()
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not begin UpdateChannel transaction: "+err.Error())
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec("UPDATE chats SET  name = $1 WHERE id=$2", channel.Name, channel.ID)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not update UpdateChannel transaction: "+err.Error())
+	}
+
+	_, err = tx.Exec("DELETE FROM chats_users WHERE chatid=$1", channel.ID)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not delete in UpdateChannel transaction: "+err.Error())
+	}
+
+	sqlStr := "INSERT INTO chats_users (chatid, userid,isAdmin) VALUES "
+	var vals []interface{}
+	index := 1
+	for _, userID := range channel.Members {
+		sqlStr += "($" + strconv.Itoa(index) + "," + "$" + strconv.Itoa(index+1) + "," + "$" + strconv.Itoa(index+2) + "),"
+		index += 3
+		if contains(channel.Admins, userID) {
+			vals = append(vals, channel.ID, userID, true)
+		} else {
+			vals = append(vals, channel.ID, userID, false)
+		}
+	}
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	_, err = c.db.Exec(sqlStr, vals...)
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not insert chats_users in "+
+			"UpdateChannel transaction: "+err.Error())
+	}
+	err = tx.Commit()
+	if err != nil {
+		return models.NewServerError(err, http.StatusInternalServerError, "Can not commit UpdateChannel transaction "+err.Error())
+	}
+	return nil
+
 }
 
 func (c *ChatsDBRepository) RemoveWorkspace(workspaceID uint64) (int64, error) {
