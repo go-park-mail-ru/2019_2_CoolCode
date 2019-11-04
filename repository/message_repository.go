@@ -2,6 +2,8 @@ package repository
 
 import "github.com/go-park-mail-ru/2019_2_CoolCode/models"
 
+//go:generate moq -out message_repo_mock.go . MessageRepository
+
 type MessageRepository interface {
 	PutMessage(message *models.Message) (uint64, error)
 	GetMessageByID(messageID uint64) (*models.Message, error)

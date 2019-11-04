@@ -3,6 +3,7 @@ package delivery
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
@@ -27,10 +28,7 @@ type InvalidJson struct {
 	data string
 }
 
-var api = UserHandlers{
-	Users:    useCase.NewUserUseCase(repository.NewArrayUserStore()),
-	Sessions: make(map[string]uint64, 0),
-}
+var api UserHandlers
 
 var globalSessionID string
 
@@ -38,14 +36,14 @@ func AddContext(r *http.Request, key string, value string) {
 	context.Set(r, key, value)
 }
 
-//func TestPreTest(t *testing.T) {
-//	reader, _ := os.Open("users.txt")
-//	defer reader.Close()
-//	var users Users
-//	decoder := json.NewDecoder(reader)
-//	_ = decoder.Decode(&users)
-//	api.Users.readUsers(users)
-//}
+func TestPreTest(t *testing.T) {
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Error(err)
+	}
+	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
+
+}
 
 func TestSignUp(t *testing.T) {
 	cases := []TestCase{
