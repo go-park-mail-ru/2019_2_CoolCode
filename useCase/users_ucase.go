@@ -86,9 +86,10 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")
 		}
-		if user.Email == "" {
-			return models.NewClientError(nil, 400, "Bad req: empty email:(")
+		if user.Email == "" || user.Username == "" {
+			return models.NewClientError(nil, 400, "Bad req: empty email or password:(")
 		}
+
 		if user.Password == "" {
 			user.Password = oldUser.Password
 		}
@@ -101,14 +102,14 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 	return nil
 }
 
-func (u *usersUseCase) FindUsers(name string) (models.Users, error) {
+func (u *usersUseCase) FindUsers(username string) (models.Users, error) {
 	var result models.Users
 	userSlice, err := u.repository.GetUsers()
 	if err != nil {
 		return result, err
 	}
 	for _, user := range userSlice.Users {
-		if strings.HasPrefix(user.Username, name) {
+		if strings.HasPrefix(user.Username, username) {
 			user.Password = ""
 			result.Users = append(result.Users, user)
 		}

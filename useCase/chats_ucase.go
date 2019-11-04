@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+//go:generate moq -out chats_ucase_mock.go . ChatsUseCase
+
 type ChatsUseCase interface {
 	CheckChatPermission(userID uint64, chatID uint64) (bool, error)
 	GetChatByID(userID uint64, ID uint64) (models.Chat, error)
@@ -26,157 +28,26 @@ type ChatsUseCase interface {
 	DeleteChat(userID uint64, chatId uint64) error
 }
 
-type chatsUseCase struct {
+type ChatsUseCaseImpl struct {
 	repository repository.ChatsRepository
 }
 
-func (c *chatsUseCase) DeleteChat(userID uint64, chatID uint64) error {
-	deletingChat, err := c.repository.GetChatByID(chatID)
+func (c *ChatsUseCaseImpl) PutChat(Chat *models.Chat) (uint64, error) {
+	return c.repository.PutChat(Chat)
+}
+
+func (c *ChatsUseCaseImpl) GetChatByID(userID uint64, ID uint64) (models.Chat, error) {
+	chat, err := c.repository.GetChatByID(ID)
 	if err != nil {
-		return err
+		return chat, err
 	}
-	if !contains(deletingChat.Members, userID) {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	if !contains(chat.Members, userID) {
+		return chat, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
-	return c.repository.RemoveChat(chatID)
+	return chat, nil
 }
 
-func (c *chatsUseCase) GetChannelByID(userID, ID uint64) (models.Channel, error) {
-	channel, err := c.repository.GetChannelByID(ID)
-	if err != nil {
-		return channel, err
-	}
-	if !contains(channel.Members, userID) {
-		return channel, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	return channel, nil
-}
-
-func (c *chatsUseCase) GetWorkspaceByID(userID uint64, ID uint64) (models.Workspace, error) {
-	workspace, err := c.repository.GetWorkspaceByID(ID)
-	if err != nil {
-		return workspace, err
-	}
-	if !contains(workspace.Members, userID) {
-		return workspace, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	return workspace, nil
-}
-
-func (c *chatsUseCase) GetWorkspacesByUserID(ID uint64) ([]models.Workspace, error) {
-	workspaces, err := c.repository.GetWorkspaces(ID)
-	var userWorkspaces []models.Workspace
-	if err != nil {
-		return workspaces, err
-	}
-	for _, workspace := range workspaces {
-		if contains(workspace.Members, ID) {
-			userWorkspaces = append(userWorkspaces, workspace)
-		}
-	}
-	return userWorkspaces, nil
-}
-
-func (c *chatsUseCase) CreateWorkspace(workspace *models.Workspace) (uint64, error) {
-	return c.repository.PutWorkspace(workspace)
-}
-
-func (c *chatsUseCase) CreateChannel(channel *models.Channel) (uint64, error) {
-	workspace, err := c.repository.GetWorkspaceByID(channel.WorkspaceID)
-	if err != nil {
-		return 0, err
-	}
-	if !contains(workspace.Admins, channel.CreatorID) {
-		return 0, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	return c.repository.PutChannel(channel)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) EditWorkspace(userID uint64, workspace *models.Workspace) error {
-	editWorkspace, err := c.repository.GetWorkspaceByID(workspace.ID)
-	if err != nil {
-		return err
-	}
-	if !contains(editWorkspace.Admins, userID) {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	workspace.Channels = editWorkspace.Channels
-	workspace.CreatorID = editWorkspace.CreatorID
-	return c.repository.UpdateWorkspace(workspace)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) EditChannel(userID uint64, channel *models.Channel) error {
-	editChannel, err := c.repository.GetChannelByID(channel.ID)
-	if err != nil {
-		return err
-	}
-	if !contains(editChannel.Admins, userID) {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	channel.TotalMSGCount = editChannel.TotalMSGCount
-	channel.CreatorID = editChannel.CreatorID
-	return c.repository.UpdateChannel(channel)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) LogoutFromWorkspace(userID uint64, workspaceID uint64) error {
-	editWorkspace, err := c.repository.GetWorkspaceByID(workspaceID)
-	if err != nil {
-		return err
-	}
-	if !contains(editWorkspace.Members, userID) {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	editWorkspace.Members = removeElement(editWorkspace.Members, userID)
-	return c.repository.UpdateWorkspace(&editWorkspace)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) LogoutFromChannel(userID uint64, channelID uint64) error {
-	editChannel, err := c.repository.GetChannelByID(channelID)
-	if err != nil {
-		return err
-	}
-	if !contains(editChannel.Members, userID) {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	editChannel.Members = removeElement(editChannel.Members, userID)
-	return c.repository.UpdateChannel(&editChannel)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) DeleteWorkspace(userID uint64, workspaceID uint64) error {
-	deleting, err := c.repository.GetWorkspaceByID(workspaceID)
-	if err != nil {
-		return err
-	}
-	if userID != deleting.CreatorID {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	return c.repository.RemoveWorkspace(workspaceID)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) DeleteChannel(userID uint64, channelID uint64) error {
-	deletingRoom, err := c.repository.GetChannelByID(channelID)
-	if err != nil {
-		return err
-	}
-	if userID != deletingRoom.CreatorID {
-		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
-	}
-	return c.repository.RemoveChannel(channelID)
-	//TODO: отправить уведомление всем открытм ws
-}
-
-func (c *chatsUseCase) CheckChatPermission(userID uint64, chatID uint64) (bool, error) {
-	_, err := c.GetChatByID(userID, chatID)
-	return err == nil, err //TODO: плохо
-}
-
-func (c *chatsUseCase) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
+func (c *ChatsUseCaseImpl) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 	chats, err := c.repository.GetChats(ID)
 	var userChats []models.Chat
 	if err != nil {
@@ -190,27 +61,158 @@ func (c *chatsUseCase) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 	return userChats, nil
 }
 
-func (c *chatsUseCase) GetChatByID(userID, ID uint64) (models.Chat, error) {
-	chat, err := c.repository.GetChatByID(ID)
+func (c *ChatsUseCaseImpl) DeleteChat(userID uint64, chatID uint64) error {
+	ok, err := c.CheckChatPermission(userID, chatID)
 	if err != nil {
-		return chat, err
+		return err
 	}
-	if !contains(chat.Members, userID) {
-		return chat, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	if !ok {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
-	return chat, nil
+	return c.repository.RemoveChat(chatID)
 }
 
-func (c *chatsUseCase) PutChat(Chat *models.Chat) (uint64, error) {
-	return c.repository.PutChat(Chat)
+func (c *ChatsUseCaseImpl) CreateWorkspace(workspace *models.Workspace) (uint64, error) {
+	return c.repository.PutWorkspace(workspace)
 }
 
-func (c *chatsUseCase) Contains(Chat models.Chat) error {
+func (c *ChatsUseCaseImpl) GetWorkspaceByID(userID uint64, ID uint64) (models.Workspace, error) {
+	workspace, err := c.repository.GetWorkspaceByID(ID)
+	if err != nil {
+		return workspace, err
+	}
+	if !contains(workspace.Members, userID) {
+		return workspace, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return workspace, nil
+}
+
+func (c *ChatsUseCaseImpl) GetWorkspacesByUserID(ID uint64) ([]models.Workspace, error) {
+	workspaces, err := c.repository.GetWorkspaces(ID)
+	var userWorkspaces []models.Workspace
+	if err != nil {
+		return workspaces, err
+	}
+	for _, workspace := range workspaces {
+		if contains(workspace.Members, ID) {
+			userWorkspaces = append(userWorkspaces, workspace)
+		}
+	}
+	return userWorkspaces, nil
+}
+
+func (c *ChatsUseCaseImpl) EditWorkspace(userID uint64, workspace *models.Workspace) error {
+	editWorkspace, err := c.repository.GetWorkspaceByID(workspace.ID)
+	if err != nil {
+		return err
+	}
+	if !contains(editWorkspace.Admins, userID) {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	workspace.Channels = editWorkspace.Channels
+	workspace.CreatorID = editWorkspace.CreatorID
+	return c.repository.UpdateWorkspace(workspace)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) DeleteWorkspace(userID uint64, workspaceID uint64) error {
+	deleting, err := c.repository.GetWorkspaceByID(workspaceID)
+	if err != nil {
+		return err
+	}
+	if userID != deleting.CreatorID {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return c.repository.RemoveWorkspace(workspaceID)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) LogoutFromWorkspace(userID uint64, workspaceID uint64) error {
+	editWorkspace, err := c.repository.GetWorkspaceByID(workspaceID)
+	if err != nil {
+		return err
+	}
+	if !contains(editWorkspace.Members, userID) {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	editWorkspace.Members = removeElement(editWorkspace.Members, userID)
+	return c.repository.UpdateWorkspace(&editWorkspace)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) CreateChannel(channel *models.Channel) (uint64, error) {
+	workspace, err := c.repository.GetWorkspaceByID(channel.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	if !contains(workspace.Admins, channel.CreatorID) {
+		return 0, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return c.repository.PutChannel(channel)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) GetChannelByID(userID, ID uint64) (models.Channel, error) {
+	channel, err := c.repository.GetChannelByID(ID)
+	if err != nil {
+		return channel, err
+	}
+	if !contains(channel.Members, userID) {
+		return channel, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return channel, nil
+}
+
+func (c *ChatsUseCaseImpl) EditChannel(userID uint64, channel *models.Channel) error {
+	editChannel, err := c.repository.GetChannelByID(channel.ID)
+	if err != nil {
+		return err
+	}
+	if !contains(editChannel.Admins, userID) {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	channel.TotalMSGCount = editChannel.TotalMSGCount
+	channel.CreatorID = editChannel.CreatorID
+	return c.repository.UpdateChannel(channel)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) LogoutFromChannel(userID uint64, channelID uint64) error {
+	editChannel, err := c.repository.GetChannelByID(channelID)
+	if err != nil {
+		return err
+	}
+	if !contains(editChannel.Members, userID) {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	editChannel.Members = removeElement(editChannel.Members, userID)
+	return c.repository.UpdateChannel(&editChannel)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) DeleteChannel(userID uint64, channelID uint64) error {
+	deletingRoom, err := c.repository.GetChannelByID(channelID)
+	if err != nil {
+		return err
+	}
+	if userID != deletingRoom.CreatorID {
+		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return c.repository.RemoveChannel(channelID)
+	//TODO: отправить уведомление всем открытм ws
+}
+
+func (c *ChatsUseCaseImpl) CheckChatPermission(userID uint64, chatID uint64) (bool, error) {
+	_, err := c.GetChatByID(userID, chatID)
+	return err == nil, err //TODO: плохо
+}
+
+func (c *ChatsUseCaseImpl) Contains(Chat models.Chat) error {
 	return c.repository.Contains(Chat)
 }
 
 func NewChatsUseCase(repo repository.ChatsRepository) ChatsUseCase {
-	return &chatsUseCase{
+	return &ChatsUseCaseImpl{
 		repository: repo,
 	}
 }
