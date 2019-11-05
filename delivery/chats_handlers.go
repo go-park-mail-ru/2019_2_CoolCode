@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
@@ -32,7 +33,7 @@ func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
 
 	user, err := c.parseCookie(r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		c.utils.HandleError(err, w, r)
 		return
 	}
 	var newChatModel models.CreateChatModel
@@ -63,6 +64,20 @@ func (c *ChatHandlers) PostChat(w http.ResponseWriter, r *http.Request) {
 
 func (c *ChatHandlers) GetChatsByUser(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
+	cookie, _ := r.Cookie("session_id")
+	cookieID, err := c.Sessions.GetID(cookie.Value)
+	if err != nil {
+		c.utils.HandleError(
+			models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:("),
+			w, r)
+		return
+	}
+	if cookieID != uint64(requestedID) {
+		c.utils.HandleError(
+			models.NewClientError(err, http.StatusUnauthorized, fmt.Sprintf("Actual id: %d, Requested id: %d", cookieID, requestedID)),
+			w, r)
+		return
+	}
 	chats, err := c.Chats.GetChatsByUserID(uint64(requestedID))
 	if err != nil {
 		c.utils.HandleError(err, w, r)
@@ -82,7 +97,7 @@ func (c *ChatHandlers) GetChatById(w http.ResponseWriter, r *http.Request) {
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 	user, err := c.parseCookie(r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		c.utils.HandleError(err, w, r)
 		return
 	}
 	chat, err := c.Chats.GetChatByID(user.ID, uint64(requestedID))
@@ -163,7 +178,7 @@ func (c *ChatHandlers) EditChannel(w http.ResponseWriter, r *http.Request) {
 
 	user, err := c.parseCookie(r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		c.utils.HandleError(err, w, r)
 		return
 	}
 	var newChannel *models.Channel
@@ -234,7 +249,7 @@ func (c *ChatHandlers) GetWorkspaceById(w http.ResponseWriter, r *http.Request) 
 	requestedID, _ := strconv.Atoi(mux.Vars(r)["id"])
 	user, err := c.parseCookie(r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		c.utils.HandleError(err, w, r)
 		return
 	}
 	workspace, err := c.Chats.GetWorkspaceByID(user.ID, uint64(requestedID))
@@ -285,10 +300,13 @@ func (c *ChatHandlers) RemoveWorkspace(w http.ResponseWriter, r *http.Request) {
 func (c ChatHandlers) parseCookie(r *http.Request) (models.User, error) {
 	cookie, _ := r.Cookie("session_id")
 	id, err := c.Sessions.GetID(cookie.Value)
+	if err != nil {
+		return models.User{}, models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:(")
+	}
 	user, err := c.Users.GetUserByID(id)
 	if err == nil {
 		return user, nil
 	} else {
-		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
+		return user, err
 	}
 }

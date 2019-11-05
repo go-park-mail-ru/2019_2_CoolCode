@@ -19,7 +19,7 @@ type MessageHandlers interface {
 }
 
 type MessageHandlersImpl struct {
-	useCase       useCase.MessagesUseCase
+	Messages      useCase.MessagesUseCase
 	Users         useCase.UsersUseCase
 	Sessions      repository.SessionRepository
 	Notifications useCase.NotificationUseCase
@@ -29,7 +29,7 @@ type MessageHandlersImpl struct {
 func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseCase,
 	sessions repository.SessionRepository, notificationUseCase useCase.NotificationUseCase, handlersUtils utils.HandlersUtils) MessageHandlers {
 	return &MessageHandlersImpl{
-		useCase:       useCase,
+		Messages:      useCase,
 		Users:         users,
 		Sessions:      sessions,
 		Notifications: notificationUseCase,
@@ -40,7 +40,7 @@ func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseC
 func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request) {
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
+		m.utils.LogError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
@@ -54,7 +54,7 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	}
 	message.AuthorID = user.ID
 	message.ChatID = uint64(chatID)
-	id, err := m.useCase.SaveMessage(message)
+	id, err := m.Messages.SaveMessage(message)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 		return
@@ -102,7 +102,7 @@ func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request
 	}
 	message.ID = uint64(messageID)
 
-	err = m.useCase.EditMessage(message, user.ID)
+	err = m.Messages.EditMessage(message, user.ID)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 	}
@@ -111,14 +111,14 @@ func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request
 func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http.Request) {
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		m.utils.HandleError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
+		m.utils.LogError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), r)
 	}
 	user, err := m.parseCookie(r)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 		return
 	}
-	messages, err := m.useCase.GetChatMessages(uint64(chatID), user.ID)
+	messages, err := m.Messages.GetChatMessages(uint64(chatID), user.ID)
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 		return
@@ -146,9 +146,9 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 
 	hide, ok := r.URL.Query()["forAuthor"]
 	if !ok || len(hide[0]) < 1 {
-		err = m.useCase.DeleteMessage(uint64(messageID), user.ID)
+		err = m.Messages.DeleteMessage(uint64(messageID), user.ID)
 	} else {
-		err = m.useCase.HideMessageForAuthor(uint64(messageID), user.ID)
+		err = m.Messages.HideMessageForAuthor(uint64(messageID), user.ID)
 	}
 
 	if err != nil {
@@ -159,6 +159,9 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 func (m *MessageHandlersImpl) parseCookie(r *http.Request) (models.User, error) {
 	cookie, _ := r.Cookie("session_id")
 	id, err := m.Sessions.GetID(cookie.Value)
+	if err != nil {
+		return models.User{}, models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:(")
+	}
 	user, err := m.Users.GetUserByID(id)
 	if err == nil {
 		return user, nil

@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+//go:generate moq -out messages_ucase_mock.go . MessagesUseCase
 type MessagesUseCase interface {
 	SaveMessage(message *models.Message) (uint64, error)
 	EditMessage(message *models.Message, userID uint64) error

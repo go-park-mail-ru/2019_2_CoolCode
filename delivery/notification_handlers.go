@@ -65,7 +65,7 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 			w, r)
 		return
 	}
-	//Достаем Handler с помощью useCase
+	//Достаем Handler с помощью Messages
 	hub, err := h.notificationUseCase.OpenConn(uint64(requestedID))
 	go hub.Run()
 	//Запускаем event loop

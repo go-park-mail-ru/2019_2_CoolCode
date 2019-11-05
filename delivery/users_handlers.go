@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -191,15 +190,12 @@ func (handlers *UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handlers UserHandlers) getUserBySession(w http.ResponseWriter, r *http.Request) {
-	sessionID, err := r.Cookie("session_id")
-	if err != nil {
-		handlers.utils.HandleError(models.NewClientError(nil, http.StatusUnauthorized, "Bad request : unauthorized:("), w, r)
-		return
-	}
+func (handlers *UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Request) {
+	sessionID, _ := r.Cookie("session_id")
+
 	user, err := handlers.parseCookie(sessionID)
 	if err != nil {
-		handlers.utils.HandleError(models.NewClientError(nil, http.StatusUnauthorized, "Bad request : unauthorized:("), w, r)
+		handlers.utils.HandleError(err, w, r)
 		return
 	}
 
@@ -215,7 +211,6 @@ func (handlers UserHandlers) getUserBySession(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Println("Valid user session")
 }
 
 func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request) {
@@ -229,10 +224,6 @@ func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if requestedID == 0 {
-		requestedID = int(user.ID)
-	}
-
 	if uint64(requestedID) != user.ID {
 		err = models.NewClientError(nil, http.StatusUnauthorized,
 			fmt.Sprintf("Requested id: %d, user id: %d", requestedID, user.ID))
@@ -243,15 +234,16 @@ func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request
 	var editUser *models.User
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&editUser)
+	if err != nil {
+		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
+		handlers.utils.HandleError(err, w, r)
+		return
+	}
 	if editUser.ID != user.ID {
 		err = models.NewClientError(nil, http.StatusUnauthorized,
 			fmt.Sprintf("Requested id: %d, user id: %d", editUser.ID, user.ID))
 		handlers.utils.HandleError(err, w, r)
 		return
-	}
-	if err != nil {
-		err = models.NewClientError(err, http.StatusBadRequest, "Bad request : invalid JSON.")
-		handlers.utils.HandleError(err, w, r)
 	}
 
 	err = handlers.Users.ChangeUser(editUser)
@@ -264,7 +256,12 @@ func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request
 func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 
 	session, _ := r.Cookie("session_id")
-	handlers.Sessions.Remove(session.Value)
+	err := handlers.Sessions.Remove(session.Value)
+	if err != nil {
+		handlers.utils.HandleError(
+			models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:("),
+			w, r)
+	}
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
 }
@@ -282,30 +279,7 @@ func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, erro
 	}
 }
 
-func (handlers UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Request) {
-	sessionID, _ := r.Cookie("session_id")
-
-	user, err := handlers.parseCookie(sessionID)
-	if err != nil {
-		handlers.utils.HandleError(err, w, r)
-		return
-	}
-
-	body, err := json.Marshal(user)
-	if err != nil {
-		handlers.utils.HandleError(err, w, r)
-		return
-	}
-
-	_, err = w.Write(body)
-	if err != nil {
-		handlers.utils.HandleError(err, w, r)
-		return
-	}
-
-}
-
-func (handlers UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
+func (handlers *UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	cookie, _ := r.Cookie("session_id")
 
@@ -324,5 +298,4 @@ func (handlers UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	response, err := json.Marshal(users)
 	w.Write(response)
-
 }
