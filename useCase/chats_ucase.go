@@ -69,7 +69,8 @@ func (c *ChatsUseCaseImpl) DeleteChat(userID uint64, chatID uint64) error {
 	if !ok {
 		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
-	return c.repository.RemoveChat(chatID)
+	_, err = c.repository.RemoveChat(chatID)
+	return err
 }
 
 func (c *ChatsUseCaseImpl) CreateWorkspace(workspace *models.Workspace) (uint64, error) {
@@ -123,7 +124,8 @@ func (c *ChatsUseCaseImpl) DeleteWorkspace(userID uint64, workspaceID uint64) er
 	if userID != deleting.CreatorID {
 		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
-	return c.repository.RemoveWorkspace(workspaceID)
+	_, err = c.repository.RemoveWorkspace(workspaceID)
+	return err
 	//TODO: отправить уведомление всем открытм ws
 }
 

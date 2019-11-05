@@ -62,13 +62,13 @@ var _ ChatsRepository = &ChatsRepositoryMock{}
 //             PutWorkspaceFunc: func(workspace *models.Workspace) (uint64, error) {
 // 	               panic("mock out the PutWorkspace method")
 //             },
-//             RemoveChannelFunc: func(channelID uint64) error {
+//             RemoveChannelFunc: func(channelID uint64) (int64, error) {
 // 	               panic("mock out the RemoveChannel method")
 //             },
-//             RemoveChatFunc: func(chatID uint64) error {
+//             RemoveChatFunc: func(chatID uint64) (int64, error) {
 // 	               panic("mock out the RemoveChat method")
 //             },
-//             RemoveWorkspaceFunc: func(workspaceID uint64) error {
+//             RemoveWorkspaceFunc: func(workspaceID uint64) (int64, error) {
 // 	               panic("mock out the RemoveWorkspace method")
 //             },
 //             UpdateChannelFunc: func(channel *models.Channel) error {
@@ -112,13 +112,13 @@ type ChatsRepositoryMock struct {
 	PutWorkspaceFunc func(workspace *models.Workspace) (uint64, error)
 
 	// RemoveChannelFunc mocks the RemoveChannel method.
-	RemoveChannelFunc func(channelID uint64) error
+	RemoveChannelFunc func(channelID uint64) (int64, error)
 
 	// RemoveChatFunc mocks the RemoveChat method.
-	RemoveChatFunc func(chatID uint64) error
+	RemoveChatFunc func(chatID uint64) (int64, error)
 
 	// RemoveWorkspaceFunc mocks the RemoveWorkspace method.
-	RemoveWorkspaceFunc func(workspaceID uint64) error
+	RemoveWorkspaceFunc func(workspaceID uint64) (int64, error)
 
 	// UpdateChannelFunc mocks the UpdateChannel method.
 	UpdateChannelFunc func(channel *models.Channel) error
@@ -481,7 +481,7 @@ func (mock *ChatsRepositoryMock) PutWorkspaceCalls() []struct {
 }
 
 // RemoveChannel calls RemoveChannelFunc.
-func (mock *ChatsRepositoryMock) RemoveChannel(channelID uint64) error {
+func (mock *ChatsRepositoryMock) RemoveChannel(channelID uint64) (int64, error) {
 	if mock.RemoveChannelFunc == nil {
 		panic("ChatsRepositoryMock.RemoveChannelFunc: method is nil but ChatsRepository.RemoveChannel was just called")
 	}
@@ -512,7 +512,7 @@ func (mock *ChatsRepositoryMock) RemoveChannelCalls() []struct {
 }
 
 // RemoveChat calls RemoveChatFunc.
-func (mock *ChatsRepositoryMock) RemoveChat(chatID uint64) error {
+func (mock *ChatsRepositoryMock) RemoveChat(chatID uint64) (int64, error) {
 	if mock.RemoveChatFunc == nil {
 		panic("ChatsRepositoryMock.RemoveChatFunc: method is nil but ChatsRepository.RemoveChat was just called")
 	}
@@ -543,7 +543,7 @@ func (mock *ChatsRepositoryMock) RemoveChatCalls() []struct {
 }
 
 // RemoveWorkspace calls RemoveWorkspaceFunc.
-func (mock *ChatsRepositoryMock) RemoveWorkspace(workspaceID uint64) error {
+func (mock *ChatsRepositoryMock) RemoveWorkspace(workspaceID uint64) (int64, error) {
 	if mock.RemoveWorkspaceFunc == nil {
 		panic("ChatsRepositoryMock.RemoveWorkspaceFunc: method is nil but ChatsRepository.RemoveWorkspace was just called")
 	}

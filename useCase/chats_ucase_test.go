@@ -117,8 +117,8 @@ func TestChatsUseCaseImpl_DeleteChat(t *testing.T) {
 		GetChatByIDFunc: func(ID uint64) (chat models.Chat, e error) {
 			return models.Chat{Members: []uint64{0}}, nil
 		},
-		RemoveChatFunc: func(chatID uint64) error {
-			return nil
+		RemoveChatFunc: func(chatID uint64) (i int64, e error) {
+			return 0, nil
 		},
 	}
 
@@ -313,8 +313,8 @@ func TestChatsUseCaseImpl_DeleteWorkspace(t *testing.T) {
 		GetWorkspaceByIDFunc: func(ID uint64) (workspace models.Workspace, e error) {
 			return models.Workspace{CreatorID: uint64(userID)}, nil
 		},
-		RemoveWorkspaceFunc: func(workspaceID uint64) error {
-			return nil
+		RemoveWorkspaceFunc: func(workspaceID uint64) (i int64, e error) {
+			return 0, nil
 		},
 	}
 
@@ -470,8 +470,8 @@ func TestChatsUseCaseImpl_DeleteChannel(t *testing.T) {
 		GetChannelByIDFunc: func(ID uint64) (channel models.Channel, e error) {
 			return models.Channel{CreatorID: uint64(userID)}, nil
 		},
-		RemoveChannelFunc: func(channelID uint64) error {
-			return nil
+		RemoveChannelFunc: func(channelID uint64) (i int64, e error) {
+			return 0, nil
 		},
 	}
 
