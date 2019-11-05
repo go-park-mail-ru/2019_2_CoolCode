@@ -254,7 +254,6 @@ func (handlers *UserHandlers) EditProfile(w http.ResponseWriter, r *http.Request
 }
 
 func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
-
 	session, _ := r.Cookie("session_id")
 	err := handlers.Sessions.Remove(session.Value)
 	if err != nil {

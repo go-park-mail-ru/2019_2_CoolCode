@@ -38,6 +38,7 @@ var (
 func main() {
 
 	logrusLogger := logrus.New()
+
 	utils := utils2.NewHandlersUtils(logrusLogger)
 	//init dbConn
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
@@ -69,6 +70,10 @@ func main() {
 	chatsApi := delivery.NewChatHandlers(usersUseCase, sessionRepository, chatsUseCase, utils)
 	notificationApi := delivery.NewNotificationHandlers(usersUseCase, sessionRepository, chatsApi.Chats, notificationsUseCase, utils)
 	messagesApi := delivery.NewMessageHandlers(messagesUseCase, usersUseCase, sessionRepository, notificationsUseCase, utils)
+	middlewares := middleware.HandlersMiddlwares{
+		Sessions: sessionRepository,
+		Logger:   logrusLogger,
+	}
 
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"http://boiling-chamber-90136.herokuapp.com", "http://localhost:3000"}),
@@ -78,45 +83,45 @@ func main() {
 	)
 
 	r := mux.NewRouter()
-	handler := middleware.PanicMiddleware(middleware.LogMiddleware(r, logrusLogger))
+	handler := middlewares.PanicMiddleware(middlewares.LogMiddleware(r, logrusLogger))
 	r.HandleFunc("/users", usersApi.SignUp).Methods("POST")
 	r.HandleFunc("/login", usersApi.Login).Methods("POST")
-	r.Handle("/users/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.EditProfile)).Methods("PUT")
-	r.Handle("/logout", middleware.AuthMiddleware(usersApi.Logout)).Methods("DELETE")
-	r.Handle("/photos", middleware.AuthMiddleware(usersApi.SavePhoto)).Methods("POST")
-	r.Handle("/photos/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.GetPhoto)).Methods("GET")
-	r.Handle("/users/{id:[0-9]+}", middleware.AuthMiddleware(usersApi.GetUser)).Methods("GET")
-	r.Handle("/users/{name:[((a-z)|(A-Z))0-9_-]+}", middleware.AuthMiddleware(usersApi.FindUsers)).Methods("GET")
+	r.Handle("/users/{id:[0-9]+}", middlewares.AuthMiddleware(usersApi.EditProfile)).Methods("PUT")
+	r.Handle("/logout", middlewares.AuthMiddleware(usersApi.Logout)).Methods("DELETE")
+	r.Handle("/photos", middlewares.AuthMiddleware(usersApi.SavePhoto)).Methods("POST")
+	r.Handle("/photos/{id:[0-9]+}", middlewares.AuthMiddleware(usersApi.GetPhoto)).Methods("GET")
+	r.Handle("/users/{id:[0-9]+}", middlewares.AuthMiddleware(usersApi.GetUser)).Methods("GET")
+	r.Handle("/users/{name:[((a-z)|(A-Z))0-9_-]+}", middlewares.AuthMiddleware(usersApi.FindUsers)).Methods("GET")
 	r.HandleFunc("/users", usersApi.GetUserBySession).Methods("GET") //TODO:Добавить в API
 
 	r.HandleFunc("/chats", chatsApi.PostChat).Methods("POST")
 	r.HandleFunc("/users/{id:[0-9]+}/chats", chatsApi.GetChatsByUser).Methods("GET")
-	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChatById)).Methods("GET")
-	r.Handle("/chats/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChat)).Methods("DELETE")
+	r.Handle("/chats/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.GetChatById)).Methods("GET")
+	r.Handle("/chats/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.RemoveChat)).Methods("DELETE")
 
-	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetChannelById)).Methods("GET")
-	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditChannel)).Methods("PUT")
-	r.Handle("/channels/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveChannel)).Methods("DELETE")
-	//TODO: r.Handle("/channels/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromChannel)).Methods("DELETE")
-	r.Handle("/workspaces/{id:[0-9]+}/channels", middleware.AuthMiddleware(chatsApi.PostChannel)).Methods("POST")
+	r.Handle("/channels/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.GetChannelById)).Methods("GET")
+	r.Handle("/channels/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.EditChannel)).Methods("PUT")
+	r.Handle("/channels/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.RemoveChannel)).Methods("DELETE")
+	//TODO: r.Handle("/channels/{id:[0-9]+}/members", middlewares.AuthMiddleware(chatsApi.LogoutFromChannel)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}/channels", middlewares.AuthMiddleware(chatsApi.PostChannel)).Methods("POST")
 
-	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.GetWorkspaceById)).Methods("GET")
-	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.EditWorkspace)).Methods("PUT")
-	//TODO: r.Handle("/workspaces/{id:[0-9]+}/members", middleware.AuthMiddleware(chatsApi.LogoutFromWorkspace)).Methods("DELETE")
-	r.Handle("/workspaces/{id:[0-9]+}", middleware.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
-	r.Handle("/workspaces", middleware.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
-	r.Handle("/chats/{id:[0-9]+}/notifications", middleware.AuthMiddleware(notificationApi.HandleNewWSConnection))
+	r.Handle("/workspaces/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.GetWorkspaceById)).Methods("GET")
+	r.Handle("/workspaces/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.EditWorkspace)).Methods("PUT")
+	//TODO: r.Handle("/workspaces/{id:[0-9]+}/members", middlewares.AuthMiddleware(chatsApi.LogoutFromWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces/{id:[0-9]+}", middlewares.AuthMiddleware(chatsApi.RemoveWorkspace)).Methods("DELETE")
+	r.Handle("/workspaces", middlewares.AuthMiddleware(chatsApi.PostWorkspace)).Methods("POST")
+	r.Handle("/chats/{id:[0-9]+}/notifications", middlewares.AuthMiddleware(notificationApi.HandleNewWSConnection))
 
-	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.SendMessage)).Methods("POST").
+	r.Handle("/chats/{id:[0-9]+}/messages", middlewares.AuthMiddleware(messagesApi.SendMessage)).Methods("POST").
 		HeadersRegexp("Content-Type", "application/(text|json)")
-	r.Handle("/chats/{id:[0-9]+}/messages", middleware.AuthMiddleware(messagesApi.GetMessagesByChatID)).Methods("GET")
-	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
-	r.Handle("/messages/{id:[0-9]+}", middleware.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
+	r.Handle("/chats/{id:[0-9]+}/messages", middlewares.AuthMiddleware(messagesApi.GetMessagesByChatID)).Methods("GET")
+	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
+	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
 	log.Println("Server started")
 
 	err = http.ListenAndServe(":8080", corsMiddleware(handler))
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
+		logrusLogger.Error(err)
 		return
 	}
 }
