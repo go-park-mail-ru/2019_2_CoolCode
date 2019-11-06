@@ -14,6 +14,13 @@ type ChatsDBRepository struct {
 
 func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspace, error) {
 	var result models.Workspace
+	var channels []*models.Channel
+
+	channels, err := c.GetChannelsByWorkspaceID(workspaceID)
+	if err != nil {
+		return result, err
+	}
+	result.Channels = channels
 
 	tx, err := c.db.Begin()
 	if err != nil {
@@ -46,6 +53,38 @@ func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspa
 		if isAdmin {
 			result.Admins = append(result.Admins, userID)
 		}
+	}
+
+	return result, nil
+}
+
+func (c *ChatsDBRepository) GetChannelsByWorkspaceID(workspaceID uint64) ([]*models.Channel, error) {
+	var result []*models.Channel
+
+	tx, err := c.db.Begin()
+	if err != nil {
+		return result, models.NewServerError(err, http.StatusInternalServerError, "can not begin transaction for GetWorkspace: "+err.Error())
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query("SELECT id FROM chats WHERE workspaceid=$1", workspaceID)
+
+	if err != nil {
+		return result, nil
+	}
+
+	for rows.Next() {
+		var channelID uint64
+		err = rows.Scan(&channelID)
+		if err != nil {
+			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get channelID for GetChannelsByWorkspace: "+err.Error())
+		}
+		channel, err := c.GetChannelByID(channelID)
+		if err != nil {
+			return result, models.NewServerError(err, http.StatusInternalServerError, "can not get channel for GetChannelsByWorkspace: "+err.Error())
+		}
+		result = append(result, &channel)
+
 	}
 
 	return result, nil

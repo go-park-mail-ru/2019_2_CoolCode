@@ -14,7 +14,7 @@ func (s *SessionsRedisRepository) GetID(session string) (uint64, error) {
 	mkey := "sessions:" + session
 	data, err := redis.Uint64(s.redisConn.Do("GET", mkey))
 	if err != nil {
-		return data, models.NewServerError(err, http.StatusInternalServerError, "can not get session in GetID"+err.Error())
+		return data, models.NewServerError(err, http.StatusInternalServerError, "can not get session in GetID "+err.Error())
 	}
 	return data, nil
 }
