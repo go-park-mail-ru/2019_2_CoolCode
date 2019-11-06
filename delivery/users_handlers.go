@@ -9,6 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/useCase"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/google/uuid"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -51,8 +52,8 @@ func (handlers *UserHandlers) SignUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
-
 	var loginUser models.User
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
 	body := r.Body
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&loginUser)
@@ -68,8 +69,8 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		token := uuid.New()
-		expiration := time.Now().Add(365 * 24 * time.Hour)
-		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: expiration}
+		sessionExpiration := time.Now().Add(365 * 24 * time.Hour)
+		cookie := http.Cookie{Name: "session_id", Value: token.String(), Expires: sessionExpiration}
 		err := handlers.Sessions.Put(cookie.Value, user.ID)
 		if err != nil {
 			handlers.utils.HandleError(err, w, r)
@@ -83,6 +84,11 @@ func (handlers *UserHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, &cookie)
 		w.Header().Set("content-type", "application/json")
+
+		//create csrf token
+		tokenExpiration := time.Now().Add(24 * time.Hour)
+		csrfToken, err := utils.Tokens.Create(user.ID, cookie.Value, tokenExpiration.Unix())
+		w.Header().Set("X-CSRF-Token", csrfToken)
 
 		_, err = w.Write(body)
 		if err != nil {
