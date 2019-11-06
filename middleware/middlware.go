@@ -14,7 +14,7 @@ type HandlersMiddlwares struct {
 
 func (m *HandlersMiddlwares) AuthMiddleware(next func(w http.ResponseWriter, r *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := r.Cookie("session_id")
+		_, err := r.Cookie("session_id")
 		if err != nil {
 			logrus.SetFormatter(&logrus.TextFormatter{})
 			logrus.WithFields(logrus.Fields{
@@ -24,16 +24,16 @@ func (m *HandlersMiddlwares) AuthMiddleware(next func(w http.ResponseWriter, r *
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		_, err = m.Sessions.GetID(session.Value)
-		if err != nil {
-			logrus.SetFormatter(&logrus.TextFormatter{})
-			logrus.WithFields(logrus.Fields{
-				"method":      r.Method,
-				"remote_addr": r.RemoteAddr,
-			}).Error("not authorised")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+		//_, err = m.Sessions.GetID(session.Value)
+		//if err != nil {
+		//	logrus.SetFormatter(&logrus.TextFormatter{})
+		//	logrus.WithFields(logrus.Fields{
+		//		"method":      r.Method,
+		//		"remote_addr": r.RemoteAddr,
+		//	}).Error("not authorised")
+		//	w.WriteHeader(http.StatusUnauthorized)
+		//	return
+		//}
 		next(w, r)
 	})
 }
