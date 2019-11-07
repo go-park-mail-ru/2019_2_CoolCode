@@ -73,6 +73,7 @@ func (m *HandlersMiddlwares) PanicMiddleware(next http.Handler) http.Handler {
 				m.Logger.WithFields(logrus.Fields{
 					"method":      r.Method,
 					"remote_addr": r.RemoteAddr,
+					"error":       err,
 				}).Error(r.URL.Path)
 				http.Error(w, "Internal server error", 500)
 			}
