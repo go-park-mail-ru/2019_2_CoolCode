@@ -271,7 +271,7 @@ func (handlers *UserHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, session)
 }
 
-func (handlers UserHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
+func (handlers *UserHandlers) parseCookie(cookie *http.Cookie) (models.User, error) {
 	id, err := handlers.Sessions.GetID(cookie.Value)
 	if err != nil {
 		return models.User{}, models.NewClientError(err, http.StatusUnauthorized, "Bad request : not valid cookie:(")
