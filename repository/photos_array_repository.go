@@ -2,7 +2,6 @@ package repository
 
 import (
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"os"
 	"strconv"
@@ -17,14 +16,12 @@ func (p *PhotosArrayRepository) SavePhoto(file multipart.File, id string) (retur
 		err := file.Close()
 
 		if err != nil && returnErr == nil {
-			log.Printf("An error occurred: %v", err)
 			returnErr = err
 		}
 	}()
 
 	tempFile, err := ioutil.TempFile(p.dirPath, "upload-*.png")
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
@@ -32,26 +29,22 @@ func (p *PhotosArrayRepository) SavePhoto(file multipart.File, id string) (retur
 		err := tempFile.Close()
 
 		if err != nil && returnErr == nil {
-			log.Printf("An error occurred: %v", err)
 			returnErr = err
 		}
 	}()
 
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
 		return err
 	}
 	err = os.Rename(tempFile.Name(), p.dirPath+id+".png")
 
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
 	_, err = tempFile.Write(fileBytes)
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
 		return err
 	}
 
@@ -63,7 +56,6 @@ func (p *PhotosArrayRepository) GetPhoto(id int) (*os.File, error) {
 	fileName := strconv.Itoa(id)
 	file, err := os.Open(p.dirPath + fileName + ".png")
 	if err != nil {
-		log.Printf("An error occurred: %v", err)
 		file, err = os.Open(p.dirPath + "default" + ".png")
 		return file, err
 	}

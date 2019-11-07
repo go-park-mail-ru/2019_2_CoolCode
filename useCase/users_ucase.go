@@ -62,7 +62,6 @@ func (u *usersUseCase) GetUserByEmail(email string) (models.User, error) {
 
 func (u *usersUseCase) SignUp(newUser *models.User) error {
 	if u.repository.Contains(*newUser) {
-		log.Println("User contains", newUser)
 		return models.NewClientError(nil, http.StatusBadRequest, "Bad request : user already contains.")
 	} else {
 		if newUser.Name == "" {
@@ -71,7 +70,6 @@ func (u *usersUseCase) SignUp(newUser *models.User) error {
 		newUser.Password = hashAndSalt(newUser.Password)
 		_, err := u.repository.PutUser(newUser)
 		if err != nil { // return 500 Internal Server Error.
-			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")
 		}
 	}
@@ -84,7 +82,6 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 	} else {
 		oldUser, err := u.repository.GetUserByID(user.ID)
 		if err != nil { // return 500 Internal Server Error.
-			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")
 		}
 		if user.Email == "" || user.Username == "" {
@@ -96,7 +93,6 @@ func (u *usersUseCase) ChangeUser(user *models.User) error {
 		}
 		err = u.repository.Replace(user.ID, user)
 		if err != nil { // return 500 Internal Server Error.
-			log.Printf("An error occurred: %v", err)
 			return models.NewServerError(err, http.StatusInternalServerError, "")
 		}
 	}
@@ -126,7 +122,6 @@ func comparePasswords(hashedPassword string, plainPassword string) bool {
 	byteHash := []byte(hashedPassword)
 	err := bcrypt.CompareHashAndPassword(byteHash, []byte(plainPassword))
 	if err != nil {
-		log.Println(err)
 		return false
 	}
 
