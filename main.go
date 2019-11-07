@@ -40,11 +40,13 @@ var (
 func main() {
 
 	logrusLogger := logrus.New()
-	f, err := os.Open("logs")
+	logrusLogger.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	f, err := os.OpenFile("logs.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
 	if err != nil {
-		logrusLogger.Error("Can`t open file")
+		logrusLogger.Error("Can`t open file:" + err.Error())
 	}
-	mw := io.MultiWriter(os.Stdout, f)
+	defer f.Close()
+	mw := io.MultiWriter(os.Stderr, f)
 	logrusLogger.SetOutput(mw)
 
 	utils := utils2.NewHandlersUtils(logrusLogger)
