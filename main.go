@@ -14,8 +14,10 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 //коды ошибок
@@ -38,6 +40,12 @@ var (
 func main() {
 
 	logrusLogger := logrus.New()
+	f, err := os.Open("logs")
+	if err != nil {
+		logrusLogger.Error("Can`t open file")
+	}
+	mw := io.MultiWriter(os.Stdout, f)
+	logrusLogger.SetOutput(mw)
 
 	utils := utils2.NewHandlersUtils(logrusLogger)
 	//init dbConn
@@ -59,6 +67,7 @@ func main() {
 		log.Fatalf("cant connect to redis")
 		return
 	}
+	defer redisConn.Close()
 
 	defer db.Close()
 	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
