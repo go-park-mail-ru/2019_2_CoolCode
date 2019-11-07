@@ -28,7 +28,7 @@ func (u *HandlersUtils) SendError(err error, w http.ResponseWriter) {
 
 	body, err := httpError.ResponseBody() // Try to get response body of ClientError.
 	if err != nil {
-		u.log.Error("An error occurred: %v", err)
+		u.log.Error("An error occurred:", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -41,7 +41,7 @@ func (u *HandlersUtils) SendError(err error, w http.ResponseWriter) {
 	_, err = w.Write(body)
 
 	if err != nil {
-		u.log.Error("An error occurred: %v", err)
+		u.log.Error("An error occurred:", err)
 		w.WriteHeader(500)
 		return
 	}
