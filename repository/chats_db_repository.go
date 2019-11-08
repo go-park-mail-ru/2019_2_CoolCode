@@ -14,13 +14,13 @@ type ChatsDBRepository struct {
 
 func (c *ChatsDBRepository) GetWorkspaceByID(workspaceID uint64) (models.Workspace, error) {
 	var result models.Workspace
-	//var channels []*models.Channel
-	//
-	//channels, err := c.GetChannelsByWorkspaceID(workspaceID)
-	//if err != nil {
-	//	return result, err
-	//}
-	//result.Channels = channels
+	var channels []*models.Channel
+
+	channels, err := c.GetChannelsByWorkspaceID(workspaceID)
+	if err != nil {
+		return result, err
+	}
+	result.Channels = channels
 
 	tx, err := c.db.Begin()
 	if err != nil {
