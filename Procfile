@@ -1,1 +1,1 @@
-web: go run .
+web: 2019_2_CoolCode
