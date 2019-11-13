@@ -208,6 +208,7 @@ func (c *ChatsDBRepository) GetChats(userID uint64) ([]models.Chat, error) {
 	}
 	for _, id := range chatsId {
 		chat, err := c.GetChatByID(id)
+
 		if err == nil {
 			result = append(result, chat)
 		}

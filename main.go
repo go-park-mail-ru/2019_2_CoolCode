@@ -55,6 +55,7 @@ func main() {
 		DB_USER, DB_PASSWORD, DB_NAME)
 
 	db, err := sql.Open("postgres", dbinfo)
+
 	if err != nil {
 		log.Printf("Error before started: %s", err.Error())
 		return
@@ -64,7 +65,11 @@ func main() {
 		return
 	}
 
-	redisConn, err := redis.DialURL(*redisAddr)
+	redisConn := &redis.Pool{
+		Dial: func() (conn redis.Conn, e error) {
+			return redis.DialURL(*redisAddr)
+		},
+	}
 	if err != nil {
 		log.Fatalf("cant connect to redis")
 		return

@@ -7,12 +7,13 @@ import (
 )
 
 type SessionsRedisRepository struct {
-	redisConn redis.Conn
+	redisConn redis.Pool
 }
 
 func (s *SessionsRedisRepository) GetID(session string) (uint64, error) {
+	conn := s.redisConn.Get()
 	mkey := "sessions:" + session
-	data, err := redis.Uint64(s.redisConn.Do("GET", mkey))
+	data, err := redis.Uint64(conn.Do("GET", mkey))
 	if err != nil {
 		return data, models.NewServerError(err, http.StatusInternalServerError, "can not get session in GetID "+err.Error())
 	}
@@ -24,8 +25,9 @@ func (s *SessionsRedisRepository) Contains(session string) bool {
 }
 
 func (s *SessionsRedisRepository) Put(session string, id uint64) error {
+	conn := s.redisConn.Get()
 	mkey := "sessions:" + session
-	_, err := s.redisConn.Do("SET", mkey, id)
+	_, err := conn.Do("SET", mkey, id)
 	if err != nil {
 		return models.NewServerError(err, http.StatusInternalServerError, "can not get session in GetID"+err.Error())
 	}
@@ -34,13 +36,14 @@ func (s *SessionsRedisRepository) Put(session string, id uint64) error {
 
 func (s *SessionsRedisRepository) Remove(session string) error {
 	mkey := "sessions:" + session
-	_, err := s.redisConn.Do("DEL", mkey)
+	conn := s.redisConn.Get()
+	_, err := conn.Do("DEL", mkey)
 	if err != nil {
 		return models.NewServerError(err, http.StatusInternalServerError, "can not get session in GetID"+err.Error())
 	}
 	return nil
 }
 
-func NewSessionRedisStore(redisConn redis.Conn) SessionRepository {
-	return &SessionsRedisRepository{redisConn: redisConn}
+func NewSessionRedisStore(redisConn *redis.Pool) SessionRepository {
+	return &SessionsRedisRepository{redisConn: *redisConn}
 }
