@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package users;
+
+service UsersService{
+    rpc GetUserByID(UserID) returns (User);
+    rpc GetUserByEmail(UserID) returns (User);
+    rpc SignUp(User) returns (Empty);
+    rpc Login(User) returns (User);
+    rpc ChangeUser(User) returns (Empty);
+    rpc  FindUsers(UserName) returns (User);
+}
+
+message UserID{
+    uint64 ID = 1;
+}
+
+message UserEmail{
+    string Email = 1;
+}
+
+message UserName{
+    string Name = 1;
+}
+
+
+message User {
+uint64 ID=1;
+string Username=2;
+string Email=3;
+string Name=4;
+string Password=5;
+string Status=6;
+string Phone=7;
+}
+
+message Users {
+   repeated User users =1;
+}
+
+message Empty {
+}
