@@ -19,5 +19,6 @@ func NewChatModel(Name string, ID1 uint64, ID2 uint64) *Chat {
 		Name:          Name,
 		TotalMSGCount: 0,
 		Members:       []uint64{ID1, ID2},
+		LastMessage:   "",
 	}
 }
