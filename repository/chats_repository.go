@@ -10,6 +10,7 @@ type ChatsRepository interface {
 	GetChannelByID(channelID uint64) (models.Channel, error)
 	GetChatByID(ID uint64) (models.Chat, error)
 	GetChats(userID uint64) ([]models.Chat, error)
+	GetMessageLast(ID uint64) (models.Message, error)
 	PutWorkspace(workspace *models.Workspace) (uint64, error)
 	PutChannel(channel *models.Channel) (uint64, error)
 	PutChat(Chat *models.Chat) (uint64, error)

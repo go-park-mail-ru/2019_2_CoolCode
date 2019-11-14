@@ -5,6 +5,7 @@ type Chat struct {
 	Name          string
 	TotalMSGCount int64
 	Members       []uint64
+	LastMessage   string
 }
 
 type ResponseChatsArray struct {

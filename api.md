@@ -28,8 +28,8 @@
   "id":"int",
   "name": "string",
   "totalMsgCount": "int",
-  "members": ["int"]
-  
+  "members": ["int"],
+  "lastMessage": "string"
 }
 ```
 
@@ -89,7 +89,7 @@
 | `admins`     | id пользователей, имеющих доступ к редактировнию workspace|
 | `creator`     | id пользователя, создавшего workspace|
 
-### 0.4 Message
+### 0.5 Message
 ```json
 {
   "id": "int",

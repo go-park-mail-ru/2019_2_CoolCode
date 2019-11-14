@@ -634,3 +634,8 @@ func (mock *ChatsRepositoryMock) UpdateWorkspaceCalls() []struct {
 	lockChatsRepositoryMockUpdateWorkspace.RUnlock()
 	return calls
 }
+
+//FIXME
+func (mock *ChatsRepositoryMock) GetMessageLast(ID uint64) (models.Message, error) {
+	panic("implement me")
+}
