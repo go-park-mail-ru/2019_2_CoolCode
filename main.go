@@ -12,6 +12,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/kabukky/httpscerts"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -135,10 +136,22 @@ func main() {
 	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
 	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
 	log.Println("Server started")
-
-	err = http.ListenAndServe(":8080", corsMiddleware(handler))
+	genetateSSL()
+	err = http.ListenAndServeTLS(":8080", "cert.pem", "key.pem", corsMiddleware(handler))
 	if err != nil {
 		logrusLogger.Error(err)
 		return
+	}
+}
+
+func genetateSSL() {
+	// Проверяем, доступен ли cert файл.
+	err := httpscerts.Check("cert.pem", "key.pem")
+	// Если он недоступен, то генерируем новый.
+	if err != nil {
+		err = httpscerts.Generate("cert.pem", "key.pem", "95.163.209.195:8080")
+		if err != nil {
+			logrus.Fatal("Ошибка: Не можем сгенерировать https сертификат.")
+		}
 	}
 }

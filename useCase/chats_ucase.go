@@ -65,7 +65,7 @@ func (c *ChatsUseCaseImpl) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 			} //get chat name
 			user, _ := c.usersRepository.GetUserByID(memberID)
 			if user.Username != "" {
-				chat.Name = user.Name
+				chat.Name = user.Username
 			}
 			userChats = append(userChats, chat)
 		}
