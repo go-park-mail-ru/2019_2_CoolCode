@@ -29,7 +29,8 @@ type ChatsUseCase interface {
 }
 
 type ChatsUseCaseImpl struct {
-	repository repository.ChatsRepository
+	repository      repository.ChatsRepository
+	usersRepository repository.UserRepo
 }
 
 func (c *ChatsUseCaseImpl) PutChat(Chat *models.Chat) (uint64, error) {
@@ -54,7 +55,18 @@ func (c *ChatsUseCaseImpl) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 		return chats, err
 	}
 	for _, chat := range chats {
+		var memberID uint64
 		if contains(chat.Members, ID) {
+			for _, userID := range chat.Members {
+				if userID != ID {
+					memberID = userID
+					break
+				}
+			} //get chat name
+			user, _ := c.usersRepository.GetUserByID(memberID)
+			if user.Username != "" {
+				chat.Name = user.Name
+			}
 			userChats = append(userChats, chat)
 		}
 	}
@@ -214,9 +226,10 @@ func (c *ChatsUseCaseImpl) Contains(Chat models.Chat) error {
 	return c.repository.Contains(Chat)
 }
 
-func NewChatsUseCase(repo repository.ChatsRepository) ChatsUseCase {
+func NewChatsUseCase(repo repository.ChatsRepository, usersRepo repository.UserRepo) ChatsUseCase {
 	return &ChatsUseCaseImpl{
-		repository: repo,
+		repository:      repo,
+		usersRepository: usersRepo,
 	}
 }
 

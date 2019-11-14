@@ -77,9 +77,10 @@ func main() {
 	defer redisConn.Close()
 
 	defer db.Close()
-	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db))
+	usersRepository := repository.NewUserDBStore(db)
+	chatsUseCase := useCase.NewChatsUseCase(repository.NewChatsDBRepository(db), usersRepository)
 	messagesUseCase := useCase.NewMessageUseCase(repository.NewMessageDbRepository(db), chatsUseCase)
-	usersUseCase := useCase.NewUserUseCase(repository.NewUserDBStore(db))
+	usersUseCase := useCase.NewUserUseCase(usersRepository)
 	notificationsUseCase := useCase.NewNotificationUseCase()
 	sessionRepository := repository.NewSessionRedisStore(redisConn)
 	usersApi := delivery.NewUsersHandlers(usersUseCase, sessionRepository, utils)
