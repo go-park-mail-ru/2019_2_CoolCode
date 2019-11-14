@@ -1,7 +1,6 @@
 package useCase
 
 import (
-	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/repository"
 	"net/http"
@@ -48,7 +47,6 @@ func (c *ChatsUseCaseImpl) GetChatByID(userID uint64, ID uint64) (models.Chat, e
 	}
 	lastMessage, err := c.repository.GetMessageLast(ID)
 	if err != nil {
-		fmt.Println("BLYA YPALI", err)
 		return chat, nil
 	}
 	chat.LastMessage = lastMessage.Text
@@ -73,6 +71,10 @@ func (c *ChatsUseCaseImpl) GetChatsByUserID(ID uint64) ([]models.Chat, error) {
 			user, _ := c.usersRepository.GetUserByID(memberID)
 			if user.Username != "" {
 				chat.Name = user.Username
+			}
+			lastMessage, err := c.repository.GetMessageLast(chat.ID)
+			if err == nil {
+				chat.LastMessage = lastMessage.Text
 			}
 			userChats = append(userChats, chat)
 		}
