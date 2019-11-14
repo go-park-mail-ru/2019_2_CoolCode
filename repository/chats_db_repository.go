@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"net/http"
 	"strconv"
@@ -430,14 +429,11 @@ func (c *ChatsDBRepository) RemoveChat(chatID uint64) (int64, error) {
 }
 
 func (c *ChatsDBRepository) GetMessageLast(chatID uint64) (models.Message, error) {
-	fmt.Println("GetMessageLast on ", chatID, " send")
 	message := &models.Message{}
 	selectStr := "SELECT ID, type, body, authorID FROM messages WHERE chatID = $1 ORDER BY ID DESC LIMIT 1"
 	row := c.db.QueryRow(selectStr, chatID)
 
 	err := row.Scan(&message.ID, &message.MessageType, &message.Text, &message.AuthorID)
-
-	fmt.Println("GetMessageLast on ", chatID, " performed")
 
 	if err != nil {
 		return *message, models.NewServerError(err, http.StatusInternalServerError, "Can not get message: "+err.Error())
