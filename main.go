@@ -137,7 +137,8 @@ func main() {
 	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
 	log.Println("Server started")
 	genetateSSL()
-	err = http.ListenAndServeTLS(":8080", "cert.pem", "key.pem", corsMiddleware(handler))
+	go http.ListenAndServeTLS(":8080", "cert.pem", "key.pem", corsMiddleware(handler))
+	err = http.ListenAndServe(":8080", corsMiddleware(handler))
 	if err != nil {
 		logrusLogger.Error(err)
 		return
