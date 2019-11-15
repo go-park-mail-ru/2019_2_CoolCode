@@ -106,6 +106,21 @@ func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 	}
+
+	//send to websocket
+
+	websocketMessage := models.WebsocketMessage{
+		WebsocketEventType: 3,
+		Body:               *message,
+	}
+	websocketJson, err := json.Marshal(websocketMessage)
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
+	err = m.Notifications.SendMessage(message.ChatID, websocketJson)
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
 }
 
 func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +168,24 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 
 	if err != nil {
 		m.utils.HandleError(err, w, r)
+	}
+
+	//send to websocket
+	message, err := m.Messages.GetMessageByID(uint64(messageID))
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
+	websocketMessage := models.WebsocketMessage{
+		WebsocketEventType: 2,
+		Body:               *message,
+	}
+	websocketJson, err := json.Marshal(websocketMessage)
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
+	err = m.Notifications.SendMessage(message.ChatID, websocketJson)
+	if err != nil {
+		m.utils.LogError(err, r)
 	}
 }
 
