@@ -159,6 +159,11 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	message, err := m.Messages.GetMessageByID(uint64(messageID))
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
+
 	hide, ok := r.URL.Query()["forAuthor"]
 	if !ok || len(hide[0]) < 1 {
 		err = m.Messages.DeleteMessage(uint64(messageID), user.ID)
@@ -170,11 +175,6 @@ func (m *MessageHandlersImpl) DeleteMessage(w http.ResponseWriter, r *http.Reque
 		m.utils.HandleError(err, w, r)
 	}
 
-	//send to websocket
-	message, err := m.Messages.GetMessageByID(uint64(messageID))
-	if err != nil {
-		m.utils.LogError(err, r)
-	}
 	websocketMessage := models.WebsocketMessage{
 		WebsocketEventType: 2,
 		Body:               *message,

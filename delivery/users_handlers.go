@@ -197,6 +197,7 @@ func (handlers *UserHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handlers *UserHandlers) GetUserBySession(w http.ResponseWriter, r *http.Request) {
+
 	sessionID, err := r.Cookie("session_id")
 	if err != nil {
 		handlers.utils.HandleError(models.NewClientError(err, http.StatusUnauthorized, "Not authorized:("), w, r)

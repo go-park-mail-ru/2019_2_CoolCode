@@ -41,7 +41,7 @@ func (m *MessageUseCaseImpl) GetChatMessages(chatID uint64, userID uint64) (mode
 }
 
 func (m *MessageUseCaseImpl) GetMessageByID(messageID uint64) (*models.Message, error) {
-	panic("implement me")
+	return m.repository.GetMessageByID(messageID)
 }
 
 func (m *MessageUseCaseImpl) SaveMessage(message *models.Message) (uint64, error) {
