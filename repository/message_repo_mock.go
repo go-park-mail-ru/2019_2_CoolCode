@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	lockMessageRepositoryMockFindMessages         sync.RWMutex
 	lockMessageRepositoryMockGetMessageByID       sync.RWMutex
 	lockMessageRepositoryMockGetMessagesByChatID  sync.RWMutex
 	lockMessageRepositoryMockHideMessageForAuthor sync.RWMutex
@@ -27,6 +28,9 @@ var _ MessageRepository = &MessageRepositoryMock{}
 //
 //         // make and configure a mocked MessageRepository
 //         mockedMessageRepository := &MessageRepositoryMock{
+//             FindMessagesFunc: func(s string) (models.Messages, error) {
+// 	               panic("mock out the FindMessages method")
+//             },
 //             GetMessageByIDFunc: func(messageID uint64) (*models.Message, error) {
 // 	               panic("mock out the GetMessageByID method")
 //             },
@@ -52,6 +56,9 @@ var _ MessageRepository = &MessageRepositoryMock{}
 //
 //     }
 type MessageRepositoryMock struct {
+	// FindMessagesFunc mocks the FindMessages method.
+	FindMessagesFunc func(s string) (models.Messages, error)
+
 	// GetMessageByIDFunc mocks the GetMessageByID method.
 	GetMessageByIDFunc func(messageID uint64) (*models.Message, error)
 
@@ -72,6 +79,11 @@ type MessageRepositoryMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// FindMessages holds details about calls to the FindMessages method.
+		FindMessages []struct {
+			// S is the s argument value.
+			S string
+		}
 		// GetMessageByID holds details about calls to the GetMessageByID method.
 		GetMessageByID []struct {
 			// MessageID is the messageID argument value.
@@ -103,6 +115,37 @@ type MessageRepositoryMock struct {
 			Message *models.Message
 		}
 	}
+}
+
+// FindMessages calls FindMessagesFunc.
+func (mock *MessageRepositoryMock) FindMessages(s string) (models.Messages, error) {
+	if mock.FindMessagesFunc == nil {
+		panic("MessageRepositoryMock.FindMessagesFunc: method is nil but MessageRepository.FindMessages was just called")
+	}
+	callInfo := struct {
+		S string
+	}{
+		S: s,
+	}
+	lockMessageRepositoryMockFindMessages.Lock()
+	mock.calls.FindMessages = append(mock.calls.FindMessages, callInfo)
+	lockMessageRepositoryMockFindMessages.Unlock()
+	return mock.FindMessagesFunc(s)
+}
+
+// FindMessagesCalls gets all the calls that were made to FindMessages.
+// Check the length with:
+//     len(mockedMessageRepository.FindMessagesCalls())
+func (mock *MessageRepositoryMock) FindMessagesCalls() []struct {
+	S string
+} {
+	var calls []struct {
+		S string
+	}
+	lockMessageRepositoryMockFindMessages.RLock()
+	calls = mock.calls.FindMessages
+	lockMessageRepositoryMockFindMessages.RUnlock()
+	return calls
 }
 
 // GetMessageByID calls GetMessageByIDFunc.

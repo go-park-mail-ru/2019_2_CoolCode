@@ -589,8 +589,19 @@
  Запрос `DELETE` `messages/{message_id}`
 ### 6.5 Удалить сообщение(только для автора)
  Запрос `DELETE` `messages/{message_id}?forAuthor=true`
- 
-
+### 6.6 Поиск по сообщениям
+  Запрос `GET` `messages/{text}`
+  
+   Тело ответа 
+   ```json
+      {
+        "messages": [
+          { 
+            
+          } 
+        ] 
+      }
+  ```
 
 
 

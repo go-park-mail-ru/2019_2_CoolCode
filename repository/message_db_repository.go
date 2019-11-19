@@ -92,6 +92,30 @@ func (m *MessageDBRepository) HideMessageForAuthor(messageID uint64) error {
 	return nil
 }
 
+func (m *MessageDBRepository) FindMessages(s string) (models.Messages, error) {
+	returningMessages := make([]*models.Message, 0)
+	rows, err := m.DB.Query("SELECT id,type,body,fileid,chatid,authorid,hideforauthor,messagetime FROM messages where position($1 in body)>0 ", s)
+	if err != nil {
+		return models.Messages{}, models.NewServerError(err, http.StatusInternalServerError,
+			"Can not get messages in FindMessages "+err.Error())
+	}
+	for rows.Next() {
+		var message models.Message
+		var messageTime time.Time
+		err := rows.Scan(&message.ID, &message.MessageType, &message.Text, &message.FileID, &message.ChatID, &message.AuthorID, &message.HideForAuthor, &messageTime)
+
+		timeString := messageTime.Format("02.01.2006 15:04")
+		message.MessageTime = timeString
+		if err != nil {
+			return models.Messages{}, models.NewServerError(err, http.StatusInternalServerError,
+				"Can not scan messages in FindMessages "+err.Error())
+		}
+		returningMessages = append(returningMessages, &message)
+	}
+	return models.Messages{returningMessages}, nil
+
+}
+
 func NewMessageDbRepository(db *sql.DB) MessageRepository {
 	return &MessageDBRepository{DB: db}
 }

@@ -11,6 +11,7 @@ import (
 var (
 	lockMessagesUseCaseMockDeleteMessage        sync.RWMutex
 	lockMessagesUseCaseMockEditMessage          sync.RWMutex
+	lockMessagesUseCaseMockFindMessages         sync.RWMutex
 	lockMessagesUseCaseMockGetChannelMessages   sync.RWMutex
 	lockMessagesUseCaseMockGetChatMessages      sync.RWMutex
 	lockMessagesUseCaseMockGetMessageByID       sync.RWMutex
@@ -34,6 +35,9 @@ var _ MessagesUseCase = &MessagesUseCaseMock{}
 //             },
 //             EditMessageFunc: func(message *models.Message, userID uint64) error {
 // 	               panic("mock out the EditMessage method")
+//             },
+//             FindMessagesFunc: func(findString string, ID uint64) (models.Messages, error) {
+// 	               panic("mock out the FindMessages method")
 //             },
 //             GetChannelMessagesFunc: func(channelID uint64, userID uint64) (models.Messages, error) {
 // 	               panic("mock out the GetChannelMessages method")
@@ -65,6 +69,9 @@ type MessagesUseCaseMock struct {
 
 	// EditMessageFunc mocks the EditMessage method.
 	EditMessageFunc func(message *models.Message, userID uint64) error
+
+	// FindMessagesFunc mocks the FindMessages method.
+	FindMessagesFunc func(findString string, ID uint64) (models.Messages, error)
 
 	// GetChannelMessagesFunc mocks the GetChannelMessages method.
 	GetChannelMessagesFunc func(channelID uint64, userID uint64) (models.Messages, error)
@@ -99,6 +106,13 @@ type MessagesUseCaseMock struct {
 			Message *models.Message
 			// UserID is the userID argument value.
 			UserID uint64
+		}
+		// FindMessages holds details about calls to the FindMessages method.
+		FindMessages []struct {
+			// FindString is the findString argument value.
+			FindString string
+			// ID is the ID argument value.
+			ID uint64
 		}
 		// GetChannelMessages holds details about calls to the GetChannelMessages method.
 		GetChannelMessages []struct {
@@ -206,6 +220,41 @@ func (mock *MessagesUseCaseMock) EditMessageCalls() []struct {
 	lockMessagesUseCaseMockEditMessage.RLock()
 	calls = mock.calls.EditMessage
 	lockMessagesUseCaseMockEditMessage.RUnlock()
+	return calls
+}
+
+// FindMessages calls FindMessagesFunc.
+func (mock *MessagesUseCaseMock) FindMessages(findString string, ID uint64) (models.Messages, error) {
+	if mock.FindMessagesFunc == nil {
+		panic("MessagesUseCaseMock.FindMessagesFunc: method is nil but MessagesUseCase.FindMessages was just called")
+	}
+	callInfo := struct {
+		FindString string
+		ID         uint64
+	}{
+		FindString: findString,
+		ID:         ID,
+	}
+	lockMessagesUseCaseMockFindMessages.Lock()
+	mock.calls.FindMessages = append(mock.calls.FindMessages, callInfo)
+	lockMessagesUseCaseMockFindMessages.Unlock()
+	return mock.FindMessagesFunc(findString, ID)
+}
+
+// FindMessagesCalls gets all the calls that were made to FindMessages.
+// Check the length with:
+//     len(mockedMessagesUseCase.FindMessagesCalls())
+func (mock *MessagesUseCaseMock) FindMessagesCalls() []struct {
+	FindString string
+	ID         uint64
+} {
+	var calls []struct {
+		FindString string
+		ID         uint64
+	}
+	lockMessagesUseCaseMockFindMessages.RLock()
+	calls = mock.calls.FindMessages
+	lockMessagesUseCaseMockFindMessages.RUnlock()
 	return calls
 }
 

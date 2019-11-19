@@ -16,6 +16,7 @@ type MessagesUseCase interface {
 	HideMessageForAuthor(messageID uint64, userID uint64) error
 	SaveChannelMessage(message *models.Message) (uint64, error)
 	GetChannelMessages(channelID uint64, userID uint64) (models.Messages, error)
+	FindMessages(findString string, ID uint64) (models.Messages, error)
 }
 
 type MessageUseCaseImpl struct {
@@ -111,4 +112,30 @@ func (m *MessageUseCaseImpl) HideMessageForAuthor(messageID uint64, userID uint6
 		return models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
 	}
 	return m.repository.HideMessageForAuthor(messageID)
+}
+
+func (m *MessageUseCaseImpl) FindMessages(findString string, ID uint64) (models.Messages, error) {
+	messages, err := m.repository.FindMessages(findString)
+	if err != nil {
+		return messages, err
+	}
+	result := models.Messages{}
+
+	for _, message := range messages.Messages {
+		ok, err := m.chats.CheckChatPermission(ID, message.ChatID)
+		if err != nil {
+			ok, err := m.chats.CheckChannelPermission(ID, message.ChatID)
+			if err != nil {
+				return result, err
+			}
+			if ok {
+				result.Messages = append(result.Messages, message)
+			}
+			continue
+		}
+		if ok {
+			result.Messages = append(result.Messages, message)
+		}
+	}
+	return result, nil
 }

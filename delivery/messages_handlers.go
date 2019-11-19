@@ -17,6 +17,7 @@ type MessageHandlers interface {
 	GetMessagesByChatID(w http.ResponseWriter, r *http.Request)
 	DeleteMessage(w http.ResponseWriter, r *http.Request)
 	EditMessage(w http.ResponseWriter, r *http.Request)
+	FindMessages(w http.ResponseWriter, r *http.Request)
 }
 
 type MessageHandlersImpl struct {
@@ -213,6 +214,33 @@ func (m *MessageHandlersImpl) parseCookie(r *http.Request) (models.User, error) 
 	} else {
 		return user, models.NewClientError(nil, http.StatusUnauthorized, "Bad request: no such user :(")
 	}
+}
+
+func (m *MessageHandlersImpl) FindMessages(w http.ResponseWriter, r *http.Request) {
+	findString, ok := mux.Vars(r)["text"]
+	if !ok {
+		m.utils.HandleError(models.NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
+	}
+	user, err := m.parseCookie(r)
+	if err != nil {
+		m.utils.HandleError(err, w, r)
+		return
+	}
+	messages, err := m.Messages.FindMessages(findString, user.ID)
+	if err != nil {
+		m.utils.HandleError(err, w, r)
+		return
+	}
+
+	jsonResponse, err := json.Marshal(messages)
+	if err != nil {
+		m.utils.HandleError(err, w, r)
+	}
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		m.utils.LogError(err, r)
+	}
+
 }
 
 func parseMessage(r *http.Request) (*models.Message, error) {
