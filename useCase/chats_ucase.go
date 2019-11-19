@@ -26,6 +26,7 @@ type ChatsUseCase interface {
 	DeleteWorkspace(userID uint64, workspaceID uint64) error
 	DeleteChannel(userID uint64, channelID uint64) error
 	DeleteChat(userID uint64, chatId uint64) error
+	CheckChannelPermission(authorID uint64, channelID uint64) (bool, error)
 }
 
 type ChatsUseCaseImpl struct {
@@ -116,6 +117,13 @@ func (c *ChatsUseCaseImpl) GetWorkspacesByUserID(ID uint64) ([]models.Workspace,
 		return workspaces, err
 	}
 	for _, workspace := range workspaces {
+		tmp := workspace.Channels[:0]
+		for _, channel := range workspace.Channels {
+			if contains(channel.Members, ID) {
+				tmp = append(tmp, channel)
+			}
+		}
+		workspace.Channels = tmp
 		if contains(workspace.Members, ID) {
 			userWorkspaces = append(userWorkspaces, workspace)
 		}
@@ -228,6 +236,11 @@ func (c *ChatsUseCaseImpl) DeleteChannel(userID uint64, channelID uint64) error 
 
 func (c *ChatsUseCaseImpl) CheckChatPermission(userID uint64, chatID uint64) (bool, error) {
 	_, err := c.GetChatByID(userID, chatID)
+	return err == nil, err //TODO: плохо
+}
+
+func (c *ChatsUseCaseImpl) CheckChannelPermission(userID uint64, chatID uint64) (bool, error) {
+	_, err := c.GetChannelByID(userID, chatID)
 	return err == nil, err //TODO: плохо
 }
 

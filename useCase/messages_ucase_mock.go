@@ -11,10 +11,12 @@ import (
 var (
 	lockMessagesUseCaseMockDeleteMessage        sync.RWMutex
 	lockMessagesUseCaseMockEditMessage          sync.RWMutex
+	lockMessagesUseCaseMockGetChannelMessages   sync.RWMutex
 	lockMessagesUseCaseMockGetChatMessages      sync.RWMutex
 	lockMessagesUseCaseMockGetMessageByID       sync.RWMutex
 	lockMessagesUseCaseMockHideMessageForAuthor sync.RWMutex
-	lockMessagesUseCaseMockSaveMessage          sync.RWMutex
+	lockMessagesUseCaseMockSaveChannelMessage   sync.RWMutex
+	lockMessagesUseCaseMockSaveChatMessage      sync.RWMutex
 )
 
 // Ensure, that MessagesUseCaseMock does implement MessagesUseCase.
@@ -33,6 +35,9 @@ var _ MessagesUseCase = &MessagesUseCaseMock{}
 //             EditMessageFunc: func(message *models.Message, userID uint64) error {
 // 	               panic("mock out the EditMessage method")
 //             },
+//             GetChannelMessagesFunc: func(channelID uint64, userID uint64) (models.Messages, error) {
+// 	               panic("mock out the GetChannelMessages method")
+//             },
 //             GetChatMessagesFunc: func(chatID uint64, userID uint64) (models.Messages, error) {
 // 	               panic("mock out the GetChatMessages method")
 //             },
@@ -42,8 +47,11 @@ var _ MessagesUseCase = &MessagesUseCaseMock{}
 //             HideMessageForAuthorFunc: func(messageID uint64, userID uint64) error {
 // 	               panic("mock out the HideMessageForAuthor method")
 //             },
-//             SaveMessageFunc: func(message *models.Message) (uint64, error) {
-// 	               panic("mock out the SaveMessage method")
+//             SaveChannelMessageFunc: func(message *models.Message) (uint64, error) {
+// 	               panic("mock out the SaveChannelMessage method")
+//             },
+//             SaveChatMessageFunc: func(message *models.Message) (uint64, error) {
+// 	               panic("mock out the SaveChatMessage method")
 //             },
 //         }
 //
@@ -58,6 +66,9 @@ type MessagesUseCaseMock struct {
 	// EditMessageFunc mocks the EditMessage method.
 	EditMessageFunc func(message *models.Message, userID uint64) error
 
+	// GetChannelMessagesFunc mocks the GetChannelMessages method.
+	GetChannelMessagesFunc func(channelID uint64, userID uint64) (models.Messages, error)
+
 	// GetChatMessagesFunc mocks the GetChatMessages method.
 	GetChatMessagesFunc func(chatID uint64, userID uint64) (models.Messages, error)
 
@@ -67,8 +78,11 @@ type MessagesUseCaseMock struct {
 	// HideMessageForAuthorFunc mocks the HideMessageForAuthor method.
 	HideMessageForAuthorFunc func(messageID uint64, userID uint64) error
 
-	// SaveMessageFunc mocks the SaveMessage method.
-	SaveMessageFunc func(message *models.Message) (uint64, error)
+	// SaveChannelMessageFunc mocks the SaveChannelMessage method.
+	SaveChannelMessageFunc func(message *models.Message) (uint64, error)
+
+	// SaveChatMessageFunc mocks the SaveChatMessage method.
+	SaveChatMessageFunc func(message *models.Message) (uint64, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -83,6 +97,13 @@ type MessagesUseCaseMock struct {
 		EditMessage []struct {
 			// Message is the message argument value.
 			Message *models.Message
+			// UserID is the userID argument value.
+			UserID uint64
+		}
+		// GetChannelMessages holds details about calls to the GetChannelMessages method.
+		GetChannelMessages []struct {
+			// ChannelID is the channelID argument value.
+			ChannelID uint64
 			// UserID is the userID argument value.
 			UserID uint64
 		}
@@ -105,8 +126,13 @@ type MessagesUseCaseMock struct {
 			// UserID is the userID argument value.
 			UserID uint64
 		}
-		// SaveMessage holds details about calls to the SaveMessage method.
-		SaveMessage []struct {
+		// SaveChannelMessage holds details about calls to the SaveChannelMessage method.
+		SaveChannelMessage []struct {
+			// Message is the message argument value.
+			Message *models.Message
+		}
+		// SaveChatMessage holds details about calls to the SaveChatMessage method.
+		SaveChatMessage []struct {
 			// Message is the message argument value.
 			Message *models.Message
 		}
@@ -180,6 +206,41 @@ func (mock *MessagesUseCaseMock) EditMessageCalls() []struct {
 	lockMessagesUseCaseMockEditMessage.RLock()
 	calls = mock.calls.EditMessage
 	lockMessagesUseCaseMockEditMessage.RUnlock()
+	return calls
+}
+
+// GetChannelMessages calls GetChannelMessagesFunc.
+func (mock *MessagesUseCaseMock) GetChannelMessages(channelID uint64, userID uint64) (models.Messages, error) {
+	if mock.GetChannelMessagesFunc == nil {
+		panic("MessagesUseCaseMock.GetChannelMessagesFunc: method is nil but MessagesUseCase.GetChannelMessages was just called")
+	}
+	callInfo := struct {
+		ChannelID uint64
+		UserID    uint64
+	}{
+		ChannelID: channelID,
+		UserID:    userID,
+	}
+	lockMessagesUseCaseMockGetChannelMessages.Lock()
+	mock.calls.GetChannelMessages = append(mock.calls.GetChannelMessages, callInfo)
+	lockMessagesUseCaseMockGetChannelMessages.Unlock()
+	return mock.GetChannelMessagesFunc(channelID, userID)
+}
+
+// GetChannelMessagesCalls gets all the calls that were made to GetChannelMessages.
+// Check the length with:
+//     len(mockedMessagesUseCase.GetChannelMessagesCalls())
+func (mock *MessagesUseCaseMock) GetChannelMessagesCalls() []struct {
+	ChannelID uint64
+	UserID    uint64
+} {
+	var calls []struct {
+		ChannelID uint64
+		UserID    uint64
+	}
+	lockMessagesUseCaseMockGetChannelMessages.RLock()
+	calls = mock.calls.GetChannelMessages
+	lockMessagesUseCaseMockGetChannelMessages.RUnlock()
 	return calls
 }
 
@@ -284,33 +345,64 @@ func (mock *MessagesUseCaseMock) HideMessageForAuthorCalls() []struct {
 	return calls
 }
 
-// SaveMessage calls SaveMessageFunc.
-func (mock *MessagesUseCaseMock) SaveMessage(message *models.Message) (uint64, error) {
-	if mock.SaveMessageFunc == nil {
-		panic("MessagesUseCaseMock.SaveMessageFunc: method is nil but MessagesUseCase.SaveMessage was just called")
+// SaveChannelMessage calls SaveChannelMessageFunc.
+func (mock *MessagesUseCaseMock) SaveChannelMessage(message *models.Message) (uint64, error) {
+	if mock.SaveChannelMessageFunc == nil {
+		panic("MessagesUseCaseMock.SaveChannelMessageFunc: method is nil but MessagesUseCase.SaveChannelMessage was just called")
 	}
 	callInfo := struct {
 		Message *models.Message
 	}{
 		Message: message,
 	}
-	lockMessagesUseCaseMockSaveMessage.Lock()
-	mock.calls.SaveMessage = append(mock.calls.SaveMessage, callInfo)
-	lockMessagesUseCaseMockSaveMessage.Unlock()
-	return mock.SaveMessageFunc(message)
+	lockMessagesUseCaseMockSaveChannelMessage.Lock()
+	mock.calls.SaveChannelMessage = append(mock.calls.SaveChannelMessage, callInfo)
+	lockMessagesUseCaseMockSaveChannelMessage.Unlock()
+	return mock.SaveChannelMessageFunc(message)
 }
 
-// SaveMessageCalls gets all the calls that were made to SaveMessage.
+// SaveChannelMessageCalls gets all the calls that were made to SaveChannelMessage.
 // Check the length with:
-//     len(mockedMessagesUseCase.SaveMessageCalls())
-func (mock *MessagesUseCaseMock) SaveMessageCalls() []struct {
+//     len(mockedMessagesUseCase.SaveChannelMessageCalls())
+func (mock *MessagesUseCaseMock) SaveChannelMessageCalls() []struct {
 	Message *models.Message
 } {
 	var calls []struct {
 		Message *models.Message
 	}
-	lockMessagesUseCaseMockSaveMessage.RLock()
-	calls = mock.calls.SaveMessage
-	lockMessagesUseCaseMockSaveMessage.RUnlock()
+	lockMessagesUseCaseMockSaveChannelMessage.RLock()
+	calls = mock.calls.SaveChannelMessage
+	lockMessagesUseCaseMockSaveChannelMessage.RUnlock()
+	return calls
+}
+
+// SaveChatMessage calls SaveChatMessageFunc.
+func (mock *MessagesUseCaseMock) SaveChatMessage(message *models.Message) (uint64, error) {
+	if mock.SaveChatMessageFunc == nil {
+		panic("MessagesUseCaseMock.SaveChatMessageFunc: method is nil but MessagesUseCase.SaveChatMessage was just called")
+	}
+	callInfo := struct {
+		Message *models.Message
+	}{
+		Message: message,
+	}
+	lockMessagesUseCaseMockSaveChatMessage.Lock()
+	mock.calls.SaveChatMessage = append(mock.calls.SaveChatMessage, callInfo)
+	lockMessagesUseCaseMockSaveChatMessage.Unlock()
+	return mock.SaveChatMessageFunc(message)
+}
+
+// SaveChatMessageCalls gets all the calls that were made to SaveChatMessage.
+// Check the length with:
+//     len(mockedMessagesUseCase.SaveChatMessageCalls())
+func (mock *MessagesUseCaseMock) SaveChatMessageCalls() []struct {
+	Message *models.Message
+} {
+	var calls []struct {
+		Message *models.Message
+	}
+	lockMessagesUseCaseMockSaveChatMessage.RLock()
+	calls = mock.calls.SaveChatMessage
+	lockMessagesUseCaseMockSaveChatMessage.RUnlock()
 	return calls
 }

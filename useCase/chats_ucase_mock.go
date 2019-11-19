@@ -9,23 +9,24 @@ import (
 )
 
 var (
-	lockChatsUseCaseMockCheckChatPermission   sync.RWMutex
-	lockChatsUseCaseMockContains              sync.RWMutex
-	lockChatsUseCaseMockCreateChannel         sync.RWMutex
-	lockChatsUseCaseMockCreateWorkspace       sync.RWMutex
-	lockChatsUseCaseMockDeleteChannel         sync.RWMutex
-	lockChatsUseCaseMockDeleteChat            sync.RWMutex
-	lockChatsUseCaseMockDeleteWorkspace       sync.RWMutex
-	lockChatsUseCaseMockEditChannel           sync.RWMutex
-	lockChatsUseCaseMockEditWorkspace         sync.RWMutex
-	lockChatsUseCaseMockGetChannelByID        sync.RWMutex
-	lockChatsUseCaseMockGetChatByID           sync.RWMutex
-	lockChatsUseCaseMockGetChatsByUserID      sync.RWMutex
-	lockChatsUseCaseMockGetWorkspaceByID      sync.RWMutex
-	lockChatsUseCaseMockGetWorkspacesByUserID sync.RWMutex
-	lockChatsUseCaseMockLogoutFromChannel     sync.RWMutex
-	lockChatsUseCaseMockLogoutFromWorkspace   sync.RWMutex
-	lockChatsUseCaseMockPutChat               sync.RWMutex
+	lockChatsUseCaseMockCheckChannelPermission sync.RWMutex
+	lockChatsUseCaseMockCheckChatPermission    sync.RWMutex
+	lockChatsUseCaseMockContains               sync.RWMutex
+	lockChatsUseCaseMockCreateChannel          sync.RWMutex
+	lockChatsUseCaseMockCreateWorkspace        sync.RWMutex
+	lockChatsUseCaseMockDeleteChannel          sync.RWMutex
+	lockChatsUseCaseMockDeleteChat             sync.RWMutex
+	lockChatsUseCaseMockDeleteWorkspace        sync.RWMutex
+	lockChatsUseCaseMockEditChannel            sync.RWMutex
+	lockChatsUseCaseMockEditWorkspace          sync.RWMutex
+	lockChatsUseCaseMockGetChannelByID         sync.RWMutex
+	lockChatsUseCaseMockGetChatByID            sync.RWMutex
+	lockChatsUseCaseMockGetChatsByUserID       sync.RWMutex
+	lockChatsUseCaseMockGetWorkspaceByID       sync.RWMutex
+	lockChatsUseCaseMockGetWorkspacesByUserID  sync.RWMutex
+	lockChatsUseCaseMockLogoutFromChannel      sync.RWMutex
+	lockChatsUseCaseMockLogoutFromWorkspace    sync.RWMutex
+	lockChatsUseCaseMockPutChat                sync.RWMutex
 )
 
 // Ensure, that ChatsUseCaseMock does implement ChatsUseCase.
@@ -38,6 +39,9 @@ var _ ChatsUseCase = &ChatsUseCaseMock{}
 //
 //         // make and configure a mocked ChatsUseCase
 //         mockedChatsUseCase := &ChatsUseCaseMock{
+//             CheckChannelPermissionFunc: func(authorID uint64, channelID uint64) (bool, error) {
+// 	               panic("mock out the CheckChannelPermission method")
+//             },
 //             CheckChatPermissionFunc: func(userID uint64, chatID uint64) (bool, error) {
 // 	               panic("mock out the CheckChatPermission method")
 //             },
@@ -96,6 +100,9 @@ var _ ChatsUseCase = &ChatsUseCaseMock{}
 //
 //     }
 type ChatsUseCaseMock struct {
+	// CheckChannelPermissionFunc mocks the CheckChannelPermission method.
+	CheckChannelPermissionFunc func(authorID uint64, channelID uint64) (bool, error)
+
 	// CheckChatPermissionFunc mocks the CheckChatPermission method.
 	CheckChatPermissionFunc func(userID uint64, chatID uint64) (bool, error)
 
@@ -149,6 +156,13 @@ type ChatsUseCaseMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CheckChannelPermission holds details about calls to the CheckChannelPermission method.
+		CheckChannelPermission []struct {
+			// AuthorID is the authorID argument value.
+			AuthorID uint64
+			// ChannelID is the channelID argument value.
+			ChannelID uint64
+		}
 		// CheckChatPermission holds details about calls to the CheckChatPermission method.
 		CheckChatPermission []struct {
 			// UserID is the userID argument value.
@@ -257,6 +271,41 @@ type ChatsUseCaseMock struct {
 			Chat *models.Chat
 		}
 	}
+}
+
+// CheckChannelPermission calls CheckChannelPermissionFunc.
+func (mock *ChatsUseCaseMock) CheckChannelPermission(authorID uint64, channelID uint64) (bool, error) {
+	if mock.CheckChannelPermissionFunc == nil {
+		panic("ChatsUseCaseMock.CheckChannelPermissionFunc: method is nil but ChatsUseCase.CheckChannelPermission was just called")
+	}
+	callInfo := struct {
+		AuthorID  uint64
+		ChannelID uint64
+	}{
+		AuthorID:  authorID,
+		ChannelID: channelID,
+	}
+	lockChatsUseCaseMockCheckChannelPermission.Lock()
+	mock.calls.CheckChannelPermission = append(mock.calls.CheckChannelPermission, callInfo)
+	lockChatsUseCaseMockCheckChannelPermission.Unlock()
+	return mock.CheckChannelPermissionFunc(authorID, channelID)
+}
+
+// CheckChannelPermissionCalls gets all the calls that were made to CheckChannelPermission.
+// Check the length with:
+//     len(mockedChatsUseCase.CheckChannelPermissionCalls())
+func (mock *ChatsUseCaseMock) CheckChannelPermissionCalls() []struct {
+	AuthorID  uint64
+	ChannelID uint64
+} {
+	var calls []struct {
+		AuthorID  uint64
+		ChannelID uint64
+	}
+	lockChatsUseCaseMockCheckChannelPermission.RLock()
+	calls = mock.calls.CheckChannelPermission
+	lockChatsUseCaseMockCheckChannelPermission.RUnlock()
+	return calls
 }
 
 // CheckChatPermission calls CheckChatPermissionFunc.

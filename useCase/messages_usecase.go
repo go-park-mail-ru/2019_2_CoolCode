@@ -8,12 +8,14 @@ import (
 
 //go:generate moq -out messages_ucase_mock.go . MessagesUseCase
 type MessagesUseCase interface {
-	SaveMessage(message *models.Message) (uint64, error)
+	SaveChatMessage(message *models.Message) (uint64, error)
 	EditMessage(message *models.Message, userID uint64) error
 	DeleteMessage(messageID uint64, userID uint64) error
 	GetChatMessages(chatID uint64, userID uint64) (models.Messages, error)
 	GetMessageByID(messageID uint64) (*models.Message, error)
 	HideMessageForAuthor(messageID uint64, userID uint64) error
+	SaveChannelMessage(message *models.Message) (uint64, error)
+	GetChannelMessages(channelID uint64, userID uint64) (models.Messages, error)
 }
 
 type MessageUseCaseImpl struct {
@@ -40,12 +42,35 @@ func (m *MessageUseCaseImpl) GetChatMessages(chatID uint64, userID uint64) (mode
 	return m.repository.GetMessagesByChatID(chatID)
 }
 
+func (m *MessageUseCaseImpl) GetChannelMessages(chatID uint64, userID uint64) (models.Messages, error) {
+	permissionOk, err := m.chats.CheckChannelPermission(userID, chatID)
+	if err != nil {
+		return models.Messages{}, err
+	}
+	if !permissionOk {
+		return models.Messages{}, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+
+	return m.repository.GetMessagesByChatID(chatID)
+}
+
 func (m *MessageUseCaseImpl) GetMessageByID(messageID uint64) (*models.Message, error) {
 	return m.repository.GetMessageByID(messageID)
 }
 
-func (m *MessageUseCaseImpl) SaveMessage(message *models.Message) (uint64, error) {
+func (m *MessageUseCaseImpl) SaveChatMessage(message *models.Message) (uint64, error) {
 	permissionOk, err := m.chats.CheckChatPermission(message.AuthorID, message.ChatID)
+	if err != nil {
+		return 0, err
+	}
+	if !permissionOk {
+		return 0, models.NewClientError(nil, http.StatusForbidden, "Not enough permissions for this request:(")
+	}
+	return m.repository.PutMessage(message)
+}
+
+func (m *MessageUseCaseImpl) SaveChannelMessage(message *models.Message) (uint64, error) {
+	permissionOk, err := m.chats.CheckChannelPermission(message.AuthorID, message.ChatID)
 	if err != nil {
 		return 0, err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type MessageHandlers interface {
@@ -39,6 +40,8 @@ func NewMessageHandlers(useCase useCase.MessagesUseCase, users useCase.UsersUseC
 
 func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request) {
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
+
+	var id uint64
 	if err != nil {
 		m.utils.LogError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), r)
 	}
@@ -54,7 +57,11 @@ func (m *MessageHandlersImpl) SendMessage(w http.ResponseWriter, r *http.Request
 	}
 	message.AuthorID = user.ID
 	message.ChatID = uint64(chatID)
-	id, err := m.Messages.SaveMessage(message)
+	if isChannel(r) {
+		id, err = m.Messages.SaveChannelMessage(message)
+	} else {
+		id, err = m.Messages.SaveChatMessage(message)
+	}
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 		return
@@ -124,6 +131,7 @@ func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request
 }
 
 func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http.Request) {
+	var messages models.Messages
 	chatID, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
 		m.utils.LogError(models.NewClientError(err, http.StatusBadRequest, "Bad request: malformed data:("), r)
@@ -133,7 +141,11 @@ func (m *MessageHandlersImpl) GetMessagesByChatID(w http.ResponseWriter, r *http
 		m.utils.HandleError(err, w, r)
 		return
 	}
-	messages, err := m.Messages.GetChatMessages(uint64(chatID), user.ID)
+	if isChannel(r) {
+		messages, err = m.Messages.GetChannelMessages(uint64(chatID), user.ID)
+	} else {
+		messages, err = m.Messages.GetChatMessages(uint64(chatID), user.ID)
+	}
 	if err != nil {
 		m.utils.HandleError(err, w, r)
 		return
@@ -208,4 +220,8 @@ func parseMessage(r *http.Request) (*models.Message, error) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&message)
 	return &message, err
+}
+
+func isChannel(r *http.Request) bool {
+	return strings.Contains(r.URL.String(), "channels")
 }

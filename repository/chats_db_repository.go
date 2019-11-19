@@ -165,7 +165,7 @@ func (c *ChatsDBRepository) GetChatByID(ID uint64) (models.Chat, error) {
 	}
 	defer tx.Rollback()
 
-	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1", ID)
+	row := tx.QueryRow("SELECT id, name, totalmsgcount FROM chats WHERE id=$1 and ischannel=false", ID)
 
 	err = row.Scan(&result.ID, &result.Name, &result.TotalMSGCount)
 	if err != nil {

@@ -175,7 +175,10 @@ func (c *ChatHandlers) GetChannelById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ChatHandlers) EditChannel(w http.ResponseWriter, r *http.Request) {
-
+	requestedID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		c.utils.HandleError(models.NewClientError(nil, http.StatusBadRequest, ""), w, r)
+	}
 	user, err := c.parseCookie(r)
 	if err != nil {
 		c.utils.HandleError(err, w, r)
@@ -184,6 +187,7 @@ func (c *ChatHandlers) EditChannel(w http.ResponseWriter, r *http.Request) {
 	var newChannel *models.Channel
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&newChannel)
+	newChannel.ID = uint64(requestedID)
 	if err != nil {
 		c.utils.HandleError(models.NewClientError(err, http.StatusBadRequest,
 			"Bad request: malformed data:("), w, r)
