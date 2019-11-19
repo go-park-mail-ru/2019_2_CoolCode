@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/go-park-mail-ru/2019_2_CoolCode/models"
 	"net/http"
+	"time"
 )
 
 type MessageDBRepository struct {
@@ -12,9 +13,13 @@ type MessageDBRepository struct {
 
 func (m *MessageDBRepository) PutMessage(message *models.Message) (uint64, error) {
 	var chatID uint64
-	row := m.DB.QueryRow("INSERT into messages (type, body, fileid, chatid, authorid) VALUES ($1,$2,$3,$4,$5) returning id",
-		message.MessageType, message.Text, message.FileID, message.ChatID, message.AuthorID)
-	err := row.Scan(&chatID)
+	time, err := time.Parse("02.01.2006 15:04", message.MessageTime)
+	if err != nil {
+		return 0, models.NewClientError(err, http.StatusBadRequest, "Wrong date format")
+	}
+	row := m.DB.QueryRow("INSERT into messages (type, body, fileid, chatid, authorid,messagetime) VALUES ($1,$2,$3,$4,$5,$6) returning id",
+		message.MessageType, message.Text, message.FileID, message.ChatID, message.AuthorID, time)
+	err = row.Scan(&chatID)
 
 	if err != nil {
 		return chatID, models.NewServerError(err, http.StatusInternalServerError, "Can not INSERT message in PutMessage "+err.Error())
@@ -36,7 +41,7 @@ func (m *MessageDBRepository) GetMessageByID(messageID uint64) (*models.Message,
 
 func (m *MessageDBRepository) GetMessagesByChatID(chatID uint64) (models.Messages, error) {
 	returningMessages := make([]*models.Message, 0)
-	rows, err := m.DB.Query("SELECT id,type,body,fileid,chatid,authorid,hideforauthor FROM messages where chatid=$1", chatID)
+	rows, err := m.DB.Query("SELECT id,type,body,fileid,chatid,authorid,hideforauthor FROM messages where chatid=$1 order by id asc ", chatID)
 	if err != nil {
 		return models.Messages{}, models.NewServerError(err, http.StatusInternalServerError,
 			"Can not get messages in GetMessagesByChatId "+err.Error())

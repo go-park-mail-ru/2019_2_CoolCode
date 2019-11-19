@@ -3,17 +3,17 @@ package repository
 import "github.com/go-park-mail-ru/2019_2_CoolCode/models"
 
 type NotificationArrayRepository struct {
-	hubs map[uint64]*models.WebSocketHub
+	Hubs map[uint64]*models.WebSocketHub
 }
 
 func (n *NotificationArrayRepository) GetNotificationHub(chatID uint64) *models.WebSocketHub {
-	if hub, ok := n.hubs[chatID]; ok {
+	if hub, ok := n.Hubs[chatID]; ok {
 		return hub
 	}
-	n.hubs[chatID] = models.NewHub()
-	return n.hubs[chatID]
+	n.Hubs[chatID] = models.NewHub()
+	return n.Hubs[chatID]
 }
 
 func NewArrayRepo() NotificationRepository {
-	return &NotificationArrayRepository{hubs: make(map[uint64]*models.WebSocketHub, 0)}
+	return &NotificationArrayRepository{Hubs: make(map[uint64]*models.WebSocketHub, 0)}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type WebSocketHub struct {
-	clients          map[string]*WebSocketClient
+	Clients          map[string]*WebSocketClient
 	AddClientChan    chan *websocket.Conn
 	removeClientChan chan *websocket.Conn
 	BroadcastChan    chan []byte
@@ -14,7 +14,7 @@ type WebSocketHub struct {
 
 func NewHub() *WebSocketHub {
 	return &WebSocketHub{
-		clients:          make(map[string]*WebSocketClient),
+		Clients:          make(map[string]*WebSocketClient),
 		AddClientChan:    make(chan *websocket.Conn),
 		removeClientChan: make(chan *websocket.Conn),
 		BroadcastChan:    make(chan []byte),
@@ -35,16 +35,16 @@ func (h *WebSocketHub) Run() {
 }
 
 func (h *WebSocketHub) RemoveClient(conn *websocket.Conn) {
-	delete(h.clients, conn.RemoteAddr().String())
+	delete(h.Clients, conn.RemoteAddr().String())
 }
 func (h *WebSocketHub) addClient(conn *websocket.Conn) {
-	h.clients[conn.RemoteAddr().String()] = &WebSocketClient{
+	h.Clients[conn.RemoteAddr().String()] = &WebSocketClient{
 		ws: conn,
 	}
 }
 
 func (h *WebSocketHub) broadcastMessage(m []byte) {
-	for _, conn := range h.clients {
+	for _, conn := range h.Clients {
 		err := conn.ws.WriteMessage(websocket.TextMessage, m)
 		if err != nil {
 			fmt.Println("Error broadcasting message: ", err)

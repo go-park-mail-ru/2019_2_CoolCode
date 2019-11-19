@@ -25,6 +25,8 @@ func (u *NotificationUseCaseImpl) OpenConn(ID uint64) (*models.WebSocketHub, err
 
 func (u *NotificationUseCaseImpl) SendMessage(chatID uint64, message []byte) error {
 	hub := u.notificationRepository.GetNotificationHub(chatID)
-	hub.BroadcastChan <- message
+	if len(hub.Clients) > 0 {
+		hub.BroadcastChan <- message
+	}
 	return nil
 }
