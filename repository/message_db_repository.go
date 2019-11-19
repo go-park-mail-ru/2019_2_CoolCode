@@ -30,25 +30,32 @@ func (m *MessageDBRepository) PutMessage(message *models.Message) (uint64, error
 
 func (m *MessageDBRepository) GetMessageByID(messageID uint64) (*models.Message, error) {
 	var returningMessage models.Message
-	row := m.DB.QueryRow("SELECT id,type,body,fileid,chatid,authorid FROM messages where id=$1", messageID)
+	var messageTime time.Time
+	row := m.DB.QueryRow("SELECT id,type,body,fileid,chatid,authorid,messagetime FROM messages where id=$1", messageID)
 	if err := row.Scan(&returningMessage.ID, &returningMessage.MessageType, &returningMessage.Text,
-		&returningMessage.FileID, &returningMessage.ChatID, &returningMessage.AuthorID); err != nil {
+		&returningMessage.FileID, &returningMessage.ChatID, &returningMessage.AuthorID, &messageTime); err != nil {
 		return &returningMessage,
 			models.NewServerError(err, http.StatusBadRequest, "Message not exists:(")
 	}
+	timeString := messageTime.Format("02.01.2006 15:04")
+	returningMessage.MessageTime = timeString
 	return &returningMessage, nil
 }
 
 func (m *MessageDBRepository) GetMessagesByChatID(chatID uint64) (models.Messages, error) {
 	returningMessages := make([]*models.Message, 0)
-	rows, err := m.DB.Query("SELECT id,type,body,fileid,chatid,authorid,hideforauthor FROM messages where chatid=$1 order by id asc ", chatID)
+	rows, err := m.DB.Query("SELECT id,type,body,fileid,chatid,authorid,hideforauthor,messagetime FROM messages where chatid=$1 order by id asc ", chatID)
 	if err != nil {
 		return models.Messages{}, models.NewServerError(err, http.StatusInternalServerError,
 			"Can not get messages in GetMessagesByChatId "+err.Error())
 	}
 	for rows.Next() {
 		var message models.Message
-		err := rows.Scan(&message.ID, &message.MessageType, &message.Text, &message.FileID, &message.ChatID, &message.AuthorID, &message.HideForAuthor)
+		var messageTime time.Time
+		err := rows.Scan(&message.ID, &message.MessageType, &message.Text, &message.FileID, &message.ChatID, &message.AuthorID, &message.HideForAuthor, &messageTime)
+
+		timeString := messageTime.Format("02.01.2006 15:04")
+		message.MessageTime = timeString
 		if err != nil {
 			return models.Messages{}, models.NewServerError(err, http.StatusInternalServerError,
 				"Can not read message in GetMessagesByChatId "+err.Error())

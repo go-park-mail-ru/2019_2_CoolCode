@@ -5,7 +5,7 @@ CREATE TABLE "messages"(
     body TEXT NOT NULL,
     fileID BIGINT,
     chatID BIGINT NOT NULL,
-    messageTime TIME,
+    messageTime timestamp,
     authorID BIGINT NOT NULL,
     hideForAuthor bool default false,
     FOREIGN KEY (authorID)  REFERENCES users(ID),
