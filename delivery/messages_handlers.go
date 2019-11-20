@@ -115,6 +115,7 @@ func (m *MessageHandlersImpl) EditMessage(w http.ResponseWriter, r *http.Request
 		return
 	}
 	message.ChatID = dbMessage.ChatID
+	message.AuthorID = dbMessage.AuthorID
 
 	err = m.Messages.EditMessage(message, user.ID)
 	if err != nil {
