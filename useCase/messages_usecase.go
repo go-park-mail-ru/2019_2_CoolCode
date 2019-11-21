@@ -124,10 +124,7 @@ func (m *MessageUseCaseImpl) FindMessages(findString string, ID uint64) (models.
 	for _, message := range messages.Messages {
 		ok, err := m.chats.CheckChatPermission(ID, message.ChatID)
 		if err != nil {
-			ok, err := m.chats.CheckChannelPermission(ID, message.ChatID)
-			if err != nil {
-				return result, err
-			}
+			ok, _ := m.chats.CheckChannelPermission(ID, message.ChatID)
 			if ok {
 				result.Messages = append(result.Messages, message)
 			}
