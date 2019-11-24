@@ -17,11 +17,16 @@ type MessagesUseCase interface {
 	SaveChannelMessage(message *models.Message) (uint64, error)
 	GetChannelMessages(channelID uint64, userID uint64) (models.Messages, error)
 	FindMessages(findString string, ID uint64) (models.Messages, error)
+	Like(ID uint64) error
 }
 
 type MessageUseCaseImpl struct {
 	repository repository.MessageRepository
 	chats      ChatsUseCase
+}
+
+func (m *MessageUseCaseImpl) Like(ID uint64) error {
+	return m.repository.Like(ID)
 }
 
 func NewMessageUseCase(repository repository.MessageRepository, chats ChatsUseCase) MessagesUseCase {

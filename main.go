@@ -140,6 +140,7 @@ func main() {
 	r.Handle("/messages/{text:[((a-z)|(A-Z))0-9_-]+}", middlewares.AuthMiddleware(messagesApi.FindMessages)).Methods("GET")
 	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.DeleteMessage)).Methods("DELETE")
 	r.Handle("/messages/{id:[0-9]+}", middlewares.AuthMiddleware(messagesApi.EditMessage)).Methods("PUT")
+	r.Handle("/messages/{id:[0-9]+}/likes", middlewares.AuthMiddleware(messagesApi.Like)).Methods("POST")
 	log.Println("Server started")
 	genetateSSL()
 

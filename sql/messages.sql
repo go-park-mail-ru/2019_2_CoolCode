@@ -7,6 +7,7 @@ CREATE TABLE "messages"(
     chatID BIGINT NOT NULL,
     messageTime timestamp,
     authorID BIGINT NOT NULL,
+    likes BIGINT NOT NULL DEFAULT 0,
     hideForAuthor bool default false,
     FOREIGN KEY (authorID)  REFERENCES users(ID),
     FOREIGN KEY (chatID)  REFERENCES chats(ID)

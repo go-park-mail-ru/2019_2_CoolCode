@@ -16,6 +16,7 @@ var (
 	lockMessagesUseCaseMockGetChatMessages      sync.RWMutex
 	lockMessagesUseCaseMockGetMessageByID       sync.RWMutex
 	lockMessagesUseCaseMockHideMessageForAuthor sync.RWMutex
+	lockMessagesUseCaseMockLike                 sync.RWMutex
 	lockMessagesUseCaseMockSaveChannelMessage   sync.RWMutex
 	lockMessagesUseCaseMockSaveChatMessage      sync.RWMutex
 )
@@ -51,6 +52,9 @@ var _ MessagesUseCase = &MessagesUseCaseMock{}
 //             HideMessageForAuthorFunc: func(messageID uint64, userID uint64) error {
 // 	               panic("mock out the HideMessageForAuthor method")
 //             },
+//             LikeFunc: func(ID uint64) error {
+// 	               panic("mock out the Like method")
+//             },
 //             SaveChannelMessageFunc: func(message *models.Message) (uint64, error) {
 // 	               panic("mock out the SaveChannelMessage method")
 //             },
@@ -84,6 +88,9 @@ type MessagesUseCaseMock struct {
 
 	// HideMessageForAuthorFunc mocks the HideMessageForAuthor method.
 	HideMessageForAuthorFunc func(messageID uint64, userID uint64) error
+
+	// LikeFunc mocks the Like method.
+	LikeFunc func(ID uint64) error
 
 	// SaveChannelMessageFunc mocks the SaveChannelMessage method.
 	SaveChannelMessageFunc func(message *models.Message) (uint64, error)
@@ -139,6 +146,11 @@ type MessagesUseCaseMock struct {
 			MessageID uint64
 			// UserID is the userID argument value.
 			UserID uint64
+		}
+		// Like holds details about calls to the Like method.
+		Like []struct {
+			// ID is the ID argument value.
+			ID uint64
 		}
 		// SaveChannelMessage holds details about calls to the SaveChannelMessage method.
 		SaveChannelMessage []struct {
@@ -391,6 +403,37 @@ func (mock *MessagesUseCaseMock) HideMessageForAuthorCalls() []struct {
 	lockMessagesUseCaseMockHideMessageForAuthor.RLock()
 	calls = mock.calls.HideMessageForAuthor
 	lockMessagesUseCaseMockHideMessageForAuthor.RUnlock()
+	return calls
+}
+
+// Like calls LikeFunc.
+func (mock *MessagesUseCaseMock) Like(ID uint64) error {
+	if mock.LikeFunc == nil {
+		panic("MessagesUseCaseMock.LikeFunc: method is nil but MessagesUseCase.Like was just called")
+	}
+	callInfo := struct {
+		ID uint64
+	}{
+		ID: ID,
+	}
+	lockMessagesUseCaseMockLike.Lock()
+	mock.calls.Like = append(mock.calls.Like, callInfo)
+	lockMessagesUseCaseMockLike.Unlock()
+	return mock.LikeFunc(ID)
+}
+
+// LikeCalls gets all the calls that were made to Like.
+// Check the length with:
+//     len(mockedMessagesUseCase.LikeCalls())
+func (mock *MessagesUseCaseMock) LikeCalls() []struct {
+	ID uint64
+} {
+	var calls []struct {
+		ID uint64
+	}
+	lockMessagesUseCaseMockLike.RLock()
+	calls = mock.calls.Like
+	lockMessagesUseCaseMockLike.RUnlock()
 	return calls
 }
 

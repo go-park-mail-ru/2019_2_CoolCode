@@ -12,4 +12,5 @@ type MessageRepository interface {
 	UpdateMessage(message *models.Message) error
 	HideMessageForAuthor(userID uint64) error
 	FindMessages(s string) (models.Messages, error)
+	Like(messageID uint64) error
 }

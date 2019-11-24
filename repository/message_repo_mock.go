@@ -13,6 +13,7 @@ var (
 	lockMessageRepositoryMockGetMessageByID       sync.RWMutex
 	lockMessageRepositoryMockGetMessagesByChatID  sync.RWMutex
 	lockMessageRepositoryMockHideMessageForAuthor sync.RWMutex
+	lockMessageRepositoryMockLike                 sync.RWMutex
 	lockMessageRepositoryMockPutMessage           sync.RWMutex
 	lockMessageRepositoryMockRemoveMessage        sync.RWMutex
 	lockMessageRepositoryMockUpdateMessage        sync.RWMutex
@@ -39,6 +40,9 @@ var _ MessageRepository = &MessageRepositoryMock{}
 //             },
 //             HideMessageForAuthorFunc: func(userID uint64) error {
 // 	               panic("mock out the HideMessageForAuthor method")
+//             },
+//             LikeFunc: func(messageID uint64) error {
+// 	               panic("mock out the Like method")
 //             },
 //             PutMessageFunc: func(message *models.Message) (uint64, error) {
 // 	               panic("mock out the PutMessage method")
@@ -67,6 +71,9 @@ type MessageRepositoryMock struct {
 
 	// HideMessageForAuthorFunc mocks the HideMessageForAuthor method.
 	HideMessageForAuthorFunc func(userID uint64) error
+
+	// LikeFunc mocks the Like method.
+	LikeFunc func(messageID uint64) error
 
 	// PutMessageFunc mocks the PutMessage method.
 	PutMessageFunc func(message *models.Message) (uint64, error)
@@ -98,6 +105,11 @@ type MessageRepositoryMock struct {
 		HideMessageForAuthor []struct {
 			// UserID is the userID argument value.
 			UserID uint64
+		}
+		// Like holds details about calls to the Like method.
+		Like []struct {
+			// MessageID is the messageID argument value.
+			MessageID uint64
 		}
 		// PutMessage holds details about calls to the PutMessage method.
 		PutMessage []struct {
@@ -238,6 +250,37 @@ func (mock *MessageRepositoryMock) HideMessageForAuthorCalls() []struct {
 	lockMessageRepositoryMockHideMessageForAuthor.RLock()
 	calls = mock.calls.HideMessageForAuthor
 	lockMessageRepositoryMockHideMessageForAuthor.RUnlock()
+	return calls
+}
+
+// Like calls LikeFunc.
+func (mock *MessageRepositoryMock) Like(messageID uint64) error {
+	if mock.LikeFunc == nil {
+		panic("MessageRepositoryMock.LikeFunc: method is nil but MessageRepository.Like was just called")
+	}
+	callInfo := struct {
+		MessageID uint64
+	}{
+		MessageID: messageID,
+	}
+	lockMessageRepositoryMockLike.Lock()
+	mock.calls.Like = append(mock.calls.Like, callInfo)
+	lockMessageRepositoryMockLike.Unlock()
+	return mock.LikeFunc(messageID)
+}
+
+// LikeCalls gets all the calls that were made to Like.
+// Check the length with:
+//     len(mockedMessageRepository.LikeCalls())
+func (mock *MessageRepositoryMock) LikeCalls() []struct {
+	MessageID uint64
+} {
+	var calls []struct {
+		MessageID uint64
+	}
+	lockMessageRepositoryMockLike.RLock()
+	calls = mock.calls.Like
+	lockMessageRepositoryMockLike.RUnlock()
 	return calls
 }
 

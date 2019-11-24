@@ -97,7 +97,8 @@
   "type": "int",
   "text": "string",
   "file_id": "int",
-  "message_time": "string"
+  "message_time": "string",
+  "likes": "int"
 }
 ```
 
@@ -108,6 +109,7 @@
 | `text`    | Текст сообщения(при типе сообщения 1)|
 | `file_id`    | id файла(при типе сообщения 2)|
 | `message_time`    | Время сообщения в формате 02.01.2006 15:04|
+| `likes`    | Количество лайков|
 
 
 
@@ -602,6 +604,9 @@
         ] 
       }
   ```
+### 6.6 Лайкнуть сообщение
+ Запрос `POST` `messages/{message_id}/likes`
+
 
 
 
