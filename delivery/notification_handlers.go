@@ -55,7 +55,12 @@ func (h *NotificationHandlers) HandleNewWSConnection(w http.ResponseWriter, r *h
 		return
 	}
 	//Проверяем доступ к чату
-	ok, err := h.chatsUseCase.CheckChatPermission(userID, uint64(requestedID))
+	var ok bool
+	if isChannel(r) {
+		ok, err = h.chatsUseCase.CheckChannelPermission(userID, uint64(requestedID))
+	} else {
+		ok, err = h.chatsUseCase.CheckChatPermission(userID, uint64(requestedID))
+	}
 	if err != nil {
 		h.utils.HandleError(err, w, r)
 		return
