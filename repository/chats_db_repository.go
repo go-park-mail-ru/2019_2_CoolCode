@@ -126,9 +126,9 @@ func (c *ChatsDBRepository) GetChannelByID(channelID uint64) (models.Channel, er
 	}
 	defer tx.Rollback()
 
-	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid FROM chats WHERE id=$1", channelID)
+	row := tx.QueryRow("SELECT id,name,totalmsgcount,creatorid,workspaceid FROM chats WHERE id=$1", channelID)
 
-	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID); err != nil {
+	if err := row.Scan(&result.ID, &result.Name, &result.TotalMSGCount, &result.CreatorID, &result.WorkspaceID); err != nil {
 		return result, models.NewClientError(err, http.StatusBadRequest, "channel not exists: "+err.Error())
 	}
 
