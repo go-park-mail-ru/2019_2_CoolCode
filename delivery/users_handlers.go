@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -294,6 +295,7 @@ func (handlers *UserHandlers) FindUsers(w http.ResponseWriter, r *http.Request) 
 	cookie, _ := r.Cookie("session_id")
 
 	user, err := handlers.parseCookie(cookie)
+	name, err = url.PathUnescape(name)
 	if err != nil {
 		handlers.utils.HandleError(err, w, r)
 		return
