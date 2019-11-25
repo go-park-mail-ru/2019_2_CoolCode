@@ -8,6 +8,7 @@ import (
 	"github.com/go-park-mail-ru/2019_2_CoolCode/utils"
 	"github.com/gorilla/mux"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -237,6 +238,7 @@ func (m *MessageHandlersImpl) parseCookie(r *http.Request) (models.User, error) 
 
 func (m *MessageHandlersImpl) FindMessages(w http.ResponseWriter, r *http.Request) {
 	findString, ok := mux.Vars(r)["text"]
+	findString, err := url.PathUnescape(findString)
 	if !ok {
 		m.utils.HandleError(models.NewClientError(nil, http.StatusBadRequest, "Bad request: malformed data:("), w, r)
 	}

@@ -69,7 +69,7 @@ func TestMessageUseCaseImpl_SaveMessage(t *testing.T) {
 		},
 	}
 
-	_, err := messageUseCase.SaveMessage(testMessage)
+	_, err := messageUseCase.SaveChatMessage(testMessage)
 
 	assert.NotNil(t, err)
 
@@ -80,7 +80,7 @@ func TestMessageUseCaseImpl_SaveMessage(t *testing.T) {
 		},
 	}
 
-	_, err = messageUseCase.SaveMessage(testMessage)
+	_, err = messageUseCase.SaveChatMessage(testMessage)
 
 	assert.NotNil(t, err)
 
@@ -96,7 +96,7 @@ func TestMessageUseCaseImpl_SaveMessage(t *testing.T) {
 		},
 	}
 
-	_, err = messageUseCase.SaveMessage(testMessage)
+	_, err = messageUseCase.SaveChatMessage(testMessage)
 
 	assert.Nil(t, err)
 }
